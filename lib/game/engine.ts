@@ -1,0 +1,380 @@
+// Game engine core - manages game loop and state
+
+import {
+  GameState,
+  GameStatus,
+  Vehicle,
+  Obstacle,
+  ObstacleType,
+  PowerUp,
+  VehicleConfig,
+  InputState,
+  ActivePowerUp,
+} from '@/types/game';
+import {
+  GAME_CONFIG,
+  VEHICLE_WIDTH,
+  VEHICLE_HEIGHT,
+  OBSTACLE_DIMENSIONS,
+  OBSTACLE_COLORS,
+  SPEED,
+  getLanePositions,
+  calculateVehicleStats,
+  DIFFICULTY,
+} from './constants';
+import {
+  checkVehicleObstacleCollision,
+  checkVehiclePowerUpCollision,
+  isOffScreen,
+} from './collision';
+import { calculateDifficulty, calculateGameSpeed, getObstacleCount } from './difficulty';
+import {
+  createPowerUp,
+  activatePowerUp,
+  updateActivePowerUps,
+  updatePowerUpPosition,
+  getSpeedMultiplier,
+  getScoreMultiplier,
+  isInvincible,
+} from './powerups';
+import { getHighScore } from '@/lib/utils/storage';
+
+export class GameEngine {
+  private state: GameState;
+  private inputState: InputState;
+  private lastObstacleSpawn: number;
+  private lastPowerUpSpawn: number;
+  private animationFrameId: number | null;
+  private lastFrameTime: number;
+  private onStateChange: ((state: GameState) => void) | null;
+
+  constructor() {
+    this.state = this.createInitialState();
+    this.inputState = { left: false, right: false };
+    this.lastObstacleSpawn = 0;
+    this.lastPowerUpSpawn = 0;
+    this.animationFrameId = null;
+    this.lastFrameTime = 0;
+    this.onStateChange = null;
+  }
+
+  private createInitialState(): GameState {
+    return {
+      status: 'idle',
+      distance: 0,
+      score: 0,
+      currentSpeed: SPEED.initial,
+      maxSpeed: SPEED.max,
+      vehicle: null,
+      obstacles: [],
+      powerUps: [],
+      activePowerUps: [],
+      difficulty: 1,
+      highScore: 0,
+    };
+  }
+
+  // Initialize vehicle with config
+  initVehicle(config: VehicleConfig): void {
+    const lanes = getLanePositions();
+    const middleLane = Math.floor(lanes.length / 2);
+    const stats = calculateVehicleStats(config);
+
+    this.state.vehicle = {
+      x: lanes[middleLane] - VEHICLE_WIDTH / 2,
+      y: GAME_CONFIG.canvasHeight - VEHICLE_HEIGHT - 50,
+      width: VEHICLE_WIDTH,
+      height: VEHICLE_HEIGHT,
+      config,
+      stats,
+      currentSpeed: 0,
+      lane: middleLane,
+    };
+
+    this.state.maxSpeed = stats.maxSpeed;
+    this.state.highScore = getHighScore();
+    this.notifyStateChange();
+  }
+
+  // Set state change callback
+  setOnStateChange(callback: (state: GameState) => void): void {
+    this.onStateChange = callback;
+  }
+
+  private notifyStateChange(): void {
+    if (this.onStateChange) {
+      this.onStateChange({ ...this.state });
+    }
+  }
+
+  // Start the game
+  start(): void {
+    if (!this.state.vehicle) return;
+
+    this.state.status = 'playing';
+    this.state.distance = 0;
+    this.state.score = 0;
+    this.state.obstacles = [];
+    this.state.powerUps = [];
+    this.state.activePowerUps = [];
+    this.state.currentSpeed = SPEED.initial;
+    this.lastFrameTime = performance.now();
+    this.lastObstacleSpawn = this.lastFrameTime;
+    this.lastPowerUpSpawn = this.lastFrameTime;
+
+    this.notifyStateChange();
+    this.gameLoop();
+  }
+
+  // Pause the game
+  pause(): void {
+    if (this.state.status === 'playing') {
+      this.state.status = 'paused';
+      if (this.animationFrameId) {
+        cancelAnimationFrame(this.animationFrameId);
+        this.animationFrameId = null;
+      }
+      this.notifyStateChange();
+    }
+  }
+
+  // Resume the game
+  resume(): void {
+    if (this.state.status === 'paused') {
+      this.state.status = 'playing';
+      this.lastFrameTime = performance.now();
+      this.notifyStateChange();
+      this.gameLoop();
+    }
+  }
+
+  // End the game
+  private gameOver(): void {
+    this.state.status = 'game_over';
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+    this.notifyStateChange();
+  }
+
+  // Reset game to initial state
+  reset(): void {
+    const vehicleConfig = this.state.vehicle?.config;
+    this.state = this.createInitialState();
+    if (vehicleConfig) {
+      this.initVehicle(vehicleConfig);
+    }
+    this.notifyStateChange();
+  }
+
+  // Handle input
+  setInput(input: Partial<InputState>): void {
+    this.inputState = { ...this.inputState, ...input };
+  }
+
+  // Get current state
+  getState(): GameState {
+    return { ...this.state };
+  }
+
+  // Main game loop
+  private gameLoop = (): void => {
+    if (this.state.status !== 'playing') return;
+
+    const currentTime = performance.now();
+    const deltaTime = currentTime - this.lastFrameTime;
+    this.lastFrameTime = currentTime;
+
+    this.update(deltaTime, currentTime);
+    this.notifyStateChange();
+
+    this.animationFrameId = requestAnimationFrame(this.gameLoop);
+  };
+
+  // Update game state
+  private update(deltaTime: number, currentTime: number): void {
+    if (!this.state.vehicle) return;
+
+    // Update speed based on distance
+    const speedMultiplier = getSpeedMultiplier(this.state.activePowerUps);
+    this.state.currentSpeed = calculateGameSpeed(this.state.distance, this.state.maxSpeed) * speedMultiplier;
+
+    // Update distance
+    this.state.distance += this.state.currentSpeed;
+
+    // Update score
+    const scoreMultiplier = getScoreMultiplier(this.state.activePowerUps);
+    this.state.score += Math.floor(this.state.currentSpeed * scoreMultiplier);
+
+    // Update difficulty
+    const difficulty = calculateDifficulty(this.state.distance);
+    this.state.difficulty = difficulty.level;
+
+    // Update vehicle position based on input
+    this.updateVehicle();
+
+    // Spawn obstacles
+    if (currentTime - this.lastObstacleSpawn > difficulty.obstacleSpawnRate) {
+      this.spawnObstacle();
+      this.lastObstacleSpawn = currentTime;
+    }
+
+    // Spawn power-ups
+    if (currentTime - this.lastPowerUpSpawn > difficulty.powerUpSpawnRate) {
+      this.spawnPowerUp();
+      this.lastPowerUpSpawn = currentTime;
+    }
+
+    // Update obstacles
+    this.updateObstacles();
+
+    // Update power-ups
+    this.updatePowerUps();
+
+    // Update active power-ups timer
+    this.state.activePowerUps = updateActivePowerUps(this.state.activePowerUps, deltaTime);
+
+    // Check collisions
+    this.checkCollisions();
+  }
+
+  // Update vehicle position
+  private updateVehicle(): void {
+    if (!this.state.vehicle) return;
+
+    const handling = this.state.vehicle.stats.handling;
+    const minX = GAME_CONFIG.roadOffset;
+    const maxX = GAME_CONFIG.roadOffset + GAME_CONFIG.roadWidth - VEHICLE_WIDTH;
+
+    if (this.inputState.left) {
+      this.state.vehicle.x = Math.max(minX, this.state.vehicle.x - handling);
+    }
+    if (this.inputState.right) {
+      this.state.vehicle.x = Math.min(maxX, this.state.vehicle.x + handling);
+    }
+  }
+
+  // Spawn new obstacle
+  private spawnObstacle(): void {
+    const lanes = getLanePositions();
+    const difficulty = calculateDifficulty(this.state.distance);
+    const count = getObstacleCount(difficulty);
+
+    const usedLanes = new Set<number>();
+
+    for (let i = 0; i < count; i++) {
+      let laneIndex: number;
+      do {
+        laneIndex = Math.floor(Math.random() * lanes.length);
+      } while (usedLanes.has(laneIndex) && usedLanes.size < lanes.length);
+
+      usedLanes.add(laneIndex);
+
+      const types: ObstacleType[] = ['car', 'car', 'car', 'truck', 'bus'];
+      const type = types[Math.floor(Math.random() * types.length)];
+      const colors = OBSTACLE_COLORS[type];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      const dimensions = OBSTACLE_DIMENSIONS[type];
+
+      const obstacle: Obstacle = {
+        x: lanes[laneIndex] - dimensions.width / 2,
+        y: -dimensions.height,
+        width: dimensions.width,
+        height: dimensions.height,
+        type,
+        speed: SPEED.obstacle[type],
+        lane: laneIndex,
+        color,
+      };
+
+      this.state.obstacles.push(obstacle);
+    }
+  }
+
+  // Spawn power-up
+  private spawnPowerUp(): void {
+    if (Math.random() > 0.5) return; // 50% chance to spawn
+
+    const powerUp = createPowerUp();
+
+    // Check if position overlaps with obstacles
+    const overlaps = this.state.obstacles.some(
+      (obs) => Math.abs(obs.y - powerUp.y) < 100 && Math.abs(obs.x - powerUp.x) < 50
+    );
+
+    if (!overlaps) {
+      this.state.powerUps.push(powerUp);
+    }
+  }
+
+  // Update obstacle positions
+  private updateObstacles(): void {
+    this.state.obstacles = this.state.obstacles
+      .map((obstacle) => ({
+        ...obstacle,
+        y: obstacle.y + this.state.currentSpeed - obstacle.speed,
+      }))
+      .filter((obstacle) => !isOffScreen(obstacle, GAME_CONFIG.canvasHeight));
+  }
+
+  // Update power-up positions
+  private updatePowerUps(): void {
+    this.state.powerUps = this.state.powerUps
+      .map((powerUp) => updatePowerUpPosition(powerUp, this.state.currentSpeed))
+      .filter((powerUp) => !isOffScreen(powerUp, GAME_CONFIG.canvasHeight) && powerUp.active);
+  }
+
+  // Check all collisions
+  private checkCollisions(): void {
+    if (!this.state.vehicle) return;
+
+    // Check obstacle collisions
+    if (!isInvincible(this.state.activePowerUps)) {
+      for (const obstacle of this.state.obstacles) {
+        if (checkVehicleObstacleCollision(this.state.vehicle, obstacle)) {
+          this.gameOver();
+          return;
+        }
+      }
+    }
+
+    // Check power-up collisions
+    for (const powerUp of this.state.powerUps) {
+      if (powerUp.active && checkVehiclePowerUpCollision(this.state.vehicle, powerUp)) {
+        powerUp.active = false;
+        const activePowerUp = activatePowerUp(powerUp, performance.now());
+
+        // Remove existing power-up of same type
+        this.state.activePowerUps = this.state.activePowerUps.filter(
+          (p) => p.type !== powerUp.type
+        );
+        this.state.activePowerUps.push(activePowerUp);
+      }
+    }
+  }
+
+  // Cleanup
+  destroy(): void {
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId);
+    }
+  }
+}
+
+// Singleton instance
+let gameEngineInstance: GameEngine | null = null;
+
+export const getGameEngine = (): GameEngine => {
+  if (!gameEngineInstance) {
+    gameEngineInstance = new GameEngine();
+  }
+  return gameEngineInstance;
+};
+
+export const resetGameEngine = (): void => {
+  if (gameEngineInstance) {
+    gameEngineInstance.destroy();
+  }
+  gameEngineInstance = null;
+};
