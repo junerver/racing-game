@@ -103,6 +103,7 @@ export interface GameState {
   coins: number;
   hearts: number;
   isRecovering: boolean;
+  recoveryEndTime: number;
 }
 
 // Input state

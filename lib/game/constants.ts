@@ -105,6 +105,10 @@ export const COIN_VALUE = 100;
 export const FPS = 60;
 export const FRAME_TIME = 1000 / FPS;
 
+// Collision recovery
+export const COLLISION_RECOVERY_TIME = 1500; // ms of invincibility after collision
+export const COLLISION_KNOCKBACK = 30; // pixels to move vehicle back on collision
+
 // Road appearance
 export const ROAD_COLORS = {
   road: '#374151',

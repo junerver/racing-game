@@ -21,6 +21,8 @@ import {
   getLanePositions,
   calculateVehicleStats,
   DIFFICULTY,
+  COLLISION_RECOVERY_TIME,
+  COLLISION_KNOCKBACK,
 } from './constants';
 import {
   checkVehicleObstacleCollision,
@@ -79,6 +81,7 @@ export class GameEngine {
       coins: 0,
       hearts: 3,
       isRecovering: false,
+      recoveryEndTime: 0,
     };
   }
 
@@ -131,6 +134,7 @@ export class GameEngine {
     this.state.coins = getCoins();
     this.state.hearts = 3;
     this.state.isRecovering = false;
+    this.state.recoveryEndTime = 0;
     this.lastFrameTime = performance.now();
     this.lastObstacleSpawn = this.lastFrameTime;
     this.lastPowerUpSpawn = this.lastFrameTime;
@@ -288,8 +292,11 @@ export class GameEngine {
       if (nitroActive) {
         this.state.currentSpeed = this.state.maxSpeed;
         this.state.isRecovering = false;
-      } else if (this.state.currentSpeed >= SPEED.initial) {
+        this.state.recoveryEndTime = 0;
+      } else if (currentTime >= this.state.recoveryEndTime) {
+        // Recovery period ended, restore normal state
         this.state.isRecovering = false;
+        this.state.recoveryEndTime = 0;
       }
     }
   }
@@ -387,13 +394,26 @@ export class GameEngine {
     // Check obstacle collisions
     const invincible = isInvincible(this.state.activePowerUps) || isShopPowerUpActive(this.state.activeShopPowerUps, 'shop_invincibility');
     if (!invincible && !this.state.isRecovering) {
-      for (const obstacle of this.state.obstacles) {
+      for (let i = 0; i < this.state.obstacles.length; i++) {
+        const obstacle = this.state.obstacles[i];
         if (checkVehicleObstacleCollision(this.state.vehicle, obstacle)) {
           // Collision penalty: reduce hearts, reset speed, lose all coins
           this.state.hearts--;
           this.state.currentSpeed = 0;
           this.state.coins = 0;
+
+          // Set recovery time (invincibility period)
           this.state.isRecovering = true;
+          this.state.recoveryEndTime = performance.now() + COLLISION_RECOVERY_TIME;
+
+          // Knockback effect: move vehicle back
+          this.state.vehicle.y = Math.min(
+            this.state.vehicle.y + COLLISION_KNOCKBACK,
+            GAME_CONFIG.canvasHeight - VEHICLE_HEIGHT - 50
+          );
+
+          // Remove the collided obstacle to prevent repeated collision
+          this.state.obstacles.splice(i, 1);
 
           // Save coins to storage
           const { getCoins } = require('@/lib/utils/storage');
