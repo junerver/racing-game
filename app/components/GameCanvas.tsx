@@ -6,6 +6,7 @@ import {
   GAME_CONFIG,
   ROAD_COLORS,
   POWERUP_CONFIG,
+  SHOP_POWERUP_CONFIG,
   getLanePositions,
 } from '@/lib/game/constants';
 
@@ -90,10 +91,19 @@ export default function GameCanvas({ gameState }: GameCanvasProps) {
       }
     }
 
+    // Draw bullets
+    for (const bullet of gameState.bullets) {
+      if (bullet.active) {
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+      }
+    }
+
     // Draw player vehicle
     if (gameState.vehicle) {
       const { vehicle } = gameState;
-      const isInvincible = gameState.activePowerUps.some(p => p.type === 'invincibility');
+      const isInvincible = gameState.activePowerUps.some(p => p.type === 'invincibility') ||
+                           gameState.activeShopPowerUps.some(p => p.type === 'shop_invincibility');
 
       // Draw invincibility shield
       if (isInvincible) {
@@ -112,6 +122,19 @@ export default function GameCanvas({ gameState }: GameCanvasProps) {
 
       drawVehicle(ctx, vehicle.x, vehicle.y, vehicle.width, vehicle.height, vehicle.config.color, true);
     }
+
+    // Draw hearts (health)
+    for (let i = 0; i < gameState.hearts; i++) {
+      ctx.fillStyle = '#ef4444';
+      ctx.font = 'bold 24px sans-serif';
+      ctx.fillText('❤️', 10 + i * 30, 30);
+    }
+
+    // Draw coins
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(`💰 ${gameState.coins}`, canvasWidth - 10, 30);
   }, [gameState]);
 
   // Draw a vehicle (car shape)

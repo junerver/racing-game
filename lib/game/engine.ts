@@ -36,8 +36,11 @@ import {
   getSpeedMultiplier,
   getScoreMultiplier,
   isInvincible,
+  activateShopPowerUp,
+  updateActiveShopPowerUps,
+  isShopPowerUpActive,
 } from './powerups';
-import { getHighScore } from '@/lib/utils/storage';
+import { getHighScore, getCoins, addCoins, spendCoins, addLeaderboardEntry } from '@/lib/utils/storage';
 
 export class GameEngine {
   private state: GameState;
@@ -69,8 +72,13 @@ export class GameEngine {
       obstacles: [],
       powerUps: [],
       activePowerUps: [],
+      activeShopPowerUps: [],
+      bullets: [],
       difficulty: 1,
       highScore: 0,
+      coins: 0,
+      hearts: 3,
+      isRecovering: false,
     };
   }
 
@@ -117,7 +125,12 @@ export class GameEngine {
     this.state.obstacles = [];
     this.state.powerUps = [];
     this.state.activePowerUps = [];
+    this.state.activeShopPowerUps = [];
+    this.state.bullets = [];
     this.state.currentSpeed = SPEED.initial;
+    this.state.coins = getCoins();
+    this.state.hearts = 3;
+    this.state.isRecovering = false;
     this.lastFrameTime = performance.now();
     this.lastObstacleSpawn = this.lastFrameTime;
     this.lastPowerUpSpawn = this.lastFrameTime;
@@ -155,6 +168,18 @@ export class GameEngine {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
     }
+
+    // Save leaderboard entry
+    if (this.state.vehicle) {
+      addLeaderboardEntry({
+        distance: Math.floor(this.state.distance / 100),
+        coins: this.state.coins,
+        score: this.state.score,
+        timestamp: Date.now(),
+        vehicleName: this.state.vehicle.config.name,
+      });
+    }
+
     this.notifyStateChange();
   }
 
@@ -235,8 +260,28 @@ export class GameEngine {
     // Update active power-ups timer
     this.state.activePowerUps = updateActivePowerUps(this.state.activePowerUps, deltaTime);
 
+    // Update active shop power-ups timer
+    this.state.activeShopPowerUps = updateActiveShopPowerUps(this.state.activeShopPowerUps, deltaTime);
+
+    // Update bullets
+    this.updateBullets();
+
+    // Spawn bullets if machine gun is active
+    if (isShopPowerUpActive(this.state.activeShopPowerUps, 'machine_gun')) {
+      this.spawnBullet();
+    }
+
     // Check collisions
     this.checkCollisions();
+
+    // Handle recovery from collision
+    if (this.state.isRecovering && this.state.currentSpeed === 0) {
+      const nitroActive = isShopPowerUpActive(this.state.activeShopPowerUps, 'nitro_boost');
+      if (nitroActive) {
+        this.state.currentSpeed = this.state.maxSpeed;
+        this.state.isRecovering = false;
+      }
+    }
   }
 
   // Update vehicle position
@@ -330,11 +375,31 @@ export class GameEngine {
     if (!this.state.vehicle) return;
 
     // Check obstacle collisions
-    if (!isInvincible(this.state.activePowerUps)) {
+    const invincible = isInvincible(this.state.activePowerUps) || isShopPowerUpActive(this.state.activeShopPowerUps, 'shop_invincibility');
+    if (!invincible && !this.state.isRecovering) {
       for (const obstacle of this.state.obstacles) {
         if (checkVehicleObstacleCollision(this.state.vehicle, obstacle)) {
-          this.gameOver();
-          return;
+          this.state.hearts--;
+          this.state.currentSpeed = 0;
+          this.state.isRecovering = true;
+
+          if (this.state.hearts <= 0) {
+            this.gameOver();
+            return;
+          }
+          break;
+        }
+      }
+    }
+
+    // Check bullet-obstacle collisions
+    for (const bullet of this.state.bullets) {
+      if (!bullet.active) continue;
+      for (const obstacle of this.state.obstacles) {
+        if (this.checkBulletObstacleCollision(bullet, obstacle)) {
+          bullet.active = false;
+          this.state.obstacles = this.state.obstacles.filter(o => o !== obstacle);
+          break;
         }
       }
     }
@@ -343,15 +408,76 @@ export class GameEngine {
     for (const powerUp of this.state.powerUps) {
       if (powerUp.active && checkVehiclePowerUpCollision(this.state.vehicle, powerUp)) {
         powerUp.active = false;
-        const activePowerUp = activatePowerUp(powerUp, performance.now());
 
-        // Remove existing power-up of same type
-        this.state.activePowerUps = this.state.activePowerUps.filter(
-          (p) => p.type !== powerUp.type
-        );
-        this.state.activePowerUps.push(activePowerUp);
+        if (powerUp.type === 'coin') {
+          this.state.coins += 100;
+          addCoins(100);
+        } else {
+          const activePowerUp = activatePowerUp(powerUp, performance.now());
+          this.state.activePowerUps = this.state.activePowerUps.filter(
+            (p) => p.type !== powerUp.type
+          );
+          this.state.activePowerUps.push(activePowerUp);
+        }
       }
     }
+  }
+
+  // Purchase shop power-up
+  purchaseShopPowerUp(type: import('@/types/game').ShopPowerUpType): boolean {
+    const { SHOP_POWERUP_CONFIG } = require('./constants');
+    const config = SHOP_POWERUP_CONFIG[type];
+
+    if (spendCoins(config.price)) {
+      this.state.coins = getCoins();
+      const activeShopPowerUp = activateShopPowerUp(type, performance.now());
+      this.state.activeShopPowerUps = this.state.activeShopPowerUps.filter(
+        (p) => p.type !== type
+      );
+      this.state.activeShopPowerUps.push(activeShopPowerUp);
+      this.notifyStateChange();
+      return true;
+    }
+    return false;
+  }
+
+  // Spawn bullet
+  private lastBulletSpawn = 0;
+  private spawnBullet(): void {
+    if (!this.state.vehicle) return;
+    const now = performance.now();
+    if (now - this.lastBulletSpawn < 200) return; // Fire rate limit
+
+    this.lastBulletSpawn = now;
+    const bullet: import('@/types/game').Bullet = {
+      x: this.state.vehicle.x + this.state.vehicle.width / 2 - 2,
+      y: this.state.vehicle.y - 10,
+      width: 4,
+      height: 10,
+      speed: 15,
+      active: true,
+    };
+    this.state.bullets.push(bullet);
+  }
+
+  // Update bullets
+  private updateBullets(): void {
+    this.state.bullets = this.state.bullets
+      .map((bullet) => ({
+        ...bullet,
+        y: bullet.y - bullet.speed,
+      }))
+      .filter((bullet) => bullet.active && bullet.y > -bullet.height);
+  }
+
+  // Check bullet-obstacle collision
+  private checkBulletObstacleCollision(bullet: import('@/types/game').Bullet, obstacle: Obstacle): boolean {
+    return (
+      bullet.x < obstacle.x + obstacle.width &&
+      bullet.x + bullet.width > obstacle.x &&
+      bullet.y < obstacle.y + obstacle.height &&
+      bullet.y + bullet.height > obstacle.y
+    );
   }
 
   // Cleanup

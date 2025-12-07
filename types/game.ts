@@ -45,7 +45,7 @@ export interface Obstacle extends Rectangle {
 }
 
 // Power-up types
-export type PowerUpType = 'speed_boost' | 'invincibility' | 'magnet' | 'score_multiplier';
+export type PowerUpType = 'speed_boost' | 'invincibility' | 'magnet' | 'score_multiplier' | 'coin';
 
 export interface PowerUp extends Rectangle {
   type: PowerUpType;
@@ -57,6 +57,30 @@ export interface ActivePowerUp {
   type: PowerUpType;
   remainingTime: number;
   startTime: number;
+}
+
+// Shop power-up types (purchasable with coins)
+export type ShopPowerUpType = 'shop_invincibility' | 'machine_gun' | 'rocket_fuel' | 'nitro_boost';
+
+export interface ShopPowerUp {
+  type: ShopPowerUpType;
+  name: string;
+  price: number;
+  duration: number;
+  icon: string;
+  description: string;
+}
+
+export interface ActiveShopPowerUp {
+  type: ShopPowerUpType;
+  remainingTime: number;
+  startTime: number;
+}
+
+// Bullet for machine gun
+export interface Bullet extends Rectangle {
+  speed: number;
+  active: boolean;
 }
 
 // Game state
@@ -72,8 +96,13 @@ export interface GameState {
   obstacles: Obstacle[];
   powerUps: PowerUp[];
   activePowerUps: ActivePowerUp[];
+  activeShopPowerUps: ActiveShopPowerUp[];
+  bullets: Bullet[];
   difficulty: number;
   highScore: number;
+  coins: number;
+  hearts: number;
+  isRecovering: boolean;
 }
 
 // Input state
@@ -103,9 +132,20 @@ export interface DifficultyConfig {
 // Storage types
 export interface SavedVehicle extends VehicleConfig {}
 
+export interface LeaderboardEntry {
+  id: string;
+  distance: number;
+  coins: number;
+  score: number;
+  timestamp: number;
+  vehicleName: string;
+}
+
 export interface GameSave {
   highScore: number;
   totalDistance: number;
   gamesPlayed: number;
   selectedVehicle: SavedVehicle | null;
+  coins: number;
+  leaderboard: LeaderboardEntry[];
 }

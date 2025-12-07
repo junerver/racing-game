@@ -24,7 +24,7 @@ export const OBSTACLE_DIMENSIONS = {
 };
 
 // Power-up dimensions
-export const POWERUP_SIZE = 30;
+export const POWERUP_SIZE = 50; // Increased from 30 to 50 for better visibility
 
 // Speed configuration (pixels per frame at 60fps)
 export const SPEED = {
@@ -87,7 +87,19 @@ export const POWERUP_CONFIG = {
   invincibility: { color: '#8b5cf6', icon: '🛡️', duration: 5000 },
   magnet: { color: '#ec4899', icon: '🧲', duration: 4000 },
   score_multiplier: { color: '#10b981', icon: '2×', duration: 5000 },
+  coin: { color: '#fbbf24', icon: '💰', duration: 0 },
 };
+
+// Shop power-up configurations
+export const SHOP_POWERUP_CONFIG = {
+  shop_invincibility: { name: '无敌', price: 500, duration: 8000, icon: '🛡️', description: '无视碰撞' },
+  machine_gun: { name: '机枪', price: 800, duration: 10000, icon: '🔫', description: '发射子弹摧毁前方车辆' },
+  rocket_fuel: { name: '火箭燃料', price: 1000, duration: 6000, icon: '🚀', description: '速度提高两倍突破极速' },
+  nitro_boost: { name: '氮气加速', price: 600, duration: 3000, icon: '⚡', description: '快速加速到极速' },
+};
+
+// Coin value
+export const COIN_VALUE = 100;
 
 // Animation and rendering
 export const FPS = 60;

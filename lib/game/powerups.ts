@@ -7,7 +7,7 @@ import { GAME_CONFIG, POWERUP_SIZE, POWERUP_CONFIG, getLanePositions } from './c
 export const createPowerUp = (): PowerUp => {
   const lanes = getLanePositions();
   const laneIndex = Math.floor(Math.random() * lanes.length);
-  const types: PowerUpType[] = ['speed_boost', 'invincibility', 'magnet', 'score_multiplier'];
+  const types: PowerUpType[] = ['speed_boost', 'invincibility', 'magnet', 'score_multiplier', 'coin', 'coin', 'coin'];
   const type = types[Math.floor(Math.random() * types.length)];
 
   return {
@@ -89,4 +89,38 @@ export const updatePowerUpPosition = (
     ...powerUp,
     y: powerUp.y + gameSpeed,
   };
+};
+
+// Shop power-up functions
+import { ShopPowerUpType, ActiveShopPowerUp } from '@/types/game';
+import { SHOP_POWERUP_CONFIG } from './constants';
+
+export const activateShopPowerUp = (
+  type: ShopPowerUpType,
+  currentTime: number
+): ActiveShopPowerUp => {
+  return {
+    type,
+    remainingTime: SHOP_POWERUP_CONFIG[type].duration,
+    startTime: currentTime,
+  };
+};
+
+export const updateActiveShopPowerUps = (
+  activeShopPowerUps: ActiveShopPowerUp[],
+  deltaTime: number
+): ActiveShopPowerUp[] => {
+  return activeShopPowerUps
+    .map((powerUp) => ({
+      ...powerUp,
+      remainingTime: powerUp.remainingTime - deltaTime,
+    }))
+    .filter((powerUp) => powerUp.remainingTime > 0);
+};
+
+export const isShopPowerUpActive = (
+  activeShopPowerUps: ActiveShopPowerUp[],
+  type: ShopPowerUpType
+): boolean => {
+  return activeShopPowerUps.some((p) => p.type === type);
 };

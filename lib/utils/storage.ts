@@ -11,6 +11,8 @@ const defaultGameSave: GameSave = {
   totalDistance: 0,
   gamesPlayed: 0,
   selectedVehicle: null,
+  coins: 0,
+  leaderboard: [],
 };
 
 // Check if localStorage is available
@@ -111,4 +113,43 @@ export const resetGameData = (): void => {
   } catch (e) {
     console.error('Failed to reset game data:', e);
   }
+};
+
+// Get coins
+export const getCoins = (): number => {
+  return loadGameSave().coins;
+};
+
+// Add coins
+export const addCoins = (amount: number): void => {
+  const current = loadGameSave();
+  saveGameData({ coins: current.coins + amount });
+};
+
+// Spend coins
+export const spendCoins = (amount: number): boolean => {
+  const current = loadGameSave();
+  if (current.coins >= amount) {
+    saveGameData({ coins: current.coins - amount });
+    return true;
+  }
+  return false;
+};
+
+// Add leaderboard entry
+export const addLeaderboardEntry = (entry: Omit<import('@/types/game').LeaderboardEntry, 'id'>): void => {
+  const current = loadGameSave();
+  const newEntry = {
+    ...entry,
+    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+  };
+  const leaderboard = [...current.leaderboard, newEntry]
+    .sort((a, b) => b.distance - a.distance)
+    .slice(0, 10);
+  saveGameData({ leaderboard });
+};
+
+// Get leaderboard
+export const getLeaderboard = (): import('@/types/game').LeaderboardEntry[] => {
+  return loadGameSave().leaderboard;
 };
