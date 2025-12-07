@@ -181,6 +181,7 @@ export class GameEngine {
         score: this.state.score,
         timestamp: Date.now(),
         vehicleName: this.state.vehicle.config.name,
+        vehicleConfig: this.state.vehicle.config,
       });
     }
 

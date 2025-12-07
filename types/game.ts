@@ -140,6 +140,7 @@ export interface LeaderboardEntry {
   score: number;
   timestamp: number;
   vehicleName: string;
+  vehicleConfig: VehicleConfig;
 }
 
 export interface GameSave {

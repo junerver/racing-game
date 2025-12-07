@@ -27,6 +27,13 @@ export default function Home() {
           >
             Customize Vehicle
           </Link>
+
+          <Link
+            href="/leaderboard"
+            className="px-12 py-4 bg-yellow-600 hover:bg-yellow-700 text-white text-lg font-medium rounded-lg transition-colors"
+          >
+            🏆 Leaderboard
+          </Link>
         </div>
 
         <div className="mt-8 text-center text-gray-400 text-sm">
