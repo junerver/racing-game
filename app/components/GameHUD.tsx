@@ -54,13 +54,17 @@ export default function GameHUD({ gameState }: GameHUDProps) {
                 </span>
                 <div className="w-16 h-2 bg-gray-700 rounded-full overflow-hidden">
                   <div
-                    className="h-full transition-all duration-100"
+                    className="h-full"
                     style={{
                       width: `${progress * 100}%`,
                       backgroundColor: config.color,
+                      boxShadow: `0 0 8px ${config.color}`,
                     }}
                   />
                 </div>
+                <span className="text-xs text-gray-300">
+                  {Math.ceil(powerUp.remainingTime / 1000)}s
+                </span>
               </div>
             );
           })}

@@ -83,11 +83,32 @@ export const getPowerUpDisplayInfo = (type: PowerUpType) => {
 // Update power-up position (move down with game speed)
 export const updatePowerUpPosition = (
   powerUp: PowerUp,
-  gameSpeed: number
+  gameSpeed: number,
+  vehicleX?: number,
+  vehicleY?: number,
+  magnetActive?: boolean
 ): PowerUp => {
+  let newX = powerUp.x;
+  let newY = powerUp.y + gameSpeed;
+
+  // Magnet effect: attract power-ups towards vehicle
+  if (magnetActive && vehicleX !== undefined && vehicleY !== undefined) {
+    const dx = vehicleX - powerUp.x;
+    const dy = vehicleY - powerUp.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Attract if within range
+    if (distance < 200 && distance > 0) {
+      const attractionStrength = 0.15;
+      newX += dx * attractionStrength;
+      newY += dy * attractionStrength;
+    }
+  }
+
   return {
     ...powerUp,
-    y: powerUp.y + gameSpeed,
+    x: newX,
+    y: newY,
   };
 };
 

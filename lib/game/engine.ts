@@ -382,8 +382,12 @@ export class GameEngine {
 
   // Update power-up positions
   private updatePowerUps(): void {
+    const magnetActive = this.state.activePowerUps.some(p => p.type === 'magnet');
+    const vehicleX = this.state.vehicle ? this.state.vehicle.x + this.state.vehicle.width / 2 : undefined;
+    const vehicleY = this.state.vehicle ? this.state.vehicle.y + this.state.vehicle.height / 2 : undefined;
+
     this.state.powerUps = this.state.powerUps
-      .map((powerUp) => updatePowerUpPosition(powerUp, this.state.currentSpeed))
+      .map((powerUp) => updatePowerUpPosition(powerUp, this.state.currentSpeed, vehicleX, vehicleY, magnetActive))
       .filter((powerUp) => !isOffScreen(powerUp, GAME_CONFIG.canvasHeight) && powerUp.active);
   }
 

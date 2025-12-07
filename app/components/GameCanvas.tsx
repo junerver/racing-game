@@ -64,18 +64,51 @@ export default function GameCanvas({ gameState }: GameCanvasProps) {
     }
 
     // Draw power-ups
+    const magnetActive = gameState.activePowerUps.some(p => p.type === 'magnet');
+    const vehicle = gameState.vehicle;
+
     for (const powerUp of gameState.powerUps) {
       if (powerUp.active) {
         const config = POWERUP_CONFIG[powerUp.type];
+        const centerX = powerUp.x + powerUp.width / 2;
+        const centerY = powerUp.y + powerUp.height / 2;
+
+        // Magnet attraction visual effect
+        if (magnetActive && vehicle) {
+          const dx = vehicle.x + vehicle.width / 2 - centerX;
+          const dy = vehicle.y + vehicle.height / 2 - centerY;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          if (distance < 200) {
+            ctx.strokeStyle = '#ec4899';
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = 0.3 * (1 - distance / 200);
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(vehicle.x + vehicle.width / 2, vehicle.y + vehicle.height / 2);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+          }
+        }
+
+        // Pulsing glow effect
+        const time = Date.now();
+        const pulse = 1 + Math.sin(time / 200) * 0.2;
+        const radius = powerUp.width / 2 * pulse;
+
+        // Outer glow
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = config.color;
         ctx.fillStyle = config.color;
         ctx.beginPath();
-        ctx.arc(
-          powerUp.x + powerUp.width / 2,
-          powerUp.y + powerUp.height / 2,
-          powerUp.width / 2,
-          0,
-          Math.PI * 2
-        );
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // Inner circle
+        ctx.fillStyle = config.color;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, powerUp.width / 2, 0, Math.PI * 2);
         ctx.fill();
 
         // Draw icon
@@ -83,11 +116,7 @@ export default function GameCanvas({ gameState }: GameCanvasProps) {
         ctx.font = 'bold 16px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(
-          config.icon,
-          powerUp.x + powerUp.width / 2,
-          powerUp.y + powerUp.height / 2
-        );
+        ctx.fillText(config.icon, centerX, centerY);
       }
     }
 
@@ -104,23 +133,57 @@ export default function GameCanvas({ gameState }: GameCanvasProps) {
       const { vehicle } = gameState;
       const isInvincible = gameState.activePowerUps.some(p => p.type === 'invincibility') ||
                            gameState.activeShopPowerUps.some(p => p.type === 'shop_invincibility');
+      const isRecovering = gameState.isRecovering;
 
-      // Draw invincibility shield
-      if (isInvincible) {
-        ctx.strokeStyle = '#8b5cf6';
-        ctx.lineWidth = 3;
+      // Draw recovery shield (collision invincibility)
+      if (isRecovering) {
+        const time = Date.now();
+        const pulseScale = 1 + Math.sin(time / 100) * 0.1;
+
+        // Outer shield glow
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 4;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#fbbf24';
         ctx.beginPath();
         ctx.arc(
           vehicle.x + vehicle.width / 2,
           vehicle.y + vehicle.height / 2,
-          Math.max(vehicle.width, vehicle.height) / 2 + 10,
+          Math.max(vehicle.width, vehicle.height) / 2 + 12 * pulseScale,
           0,
           Math.PI * 2
         );
         ctx.stroke();
+        ctx.shadowBlur = 0;
       }
 
-      drawVehicle(ctx, vehicle.x, vehicle.y, vehicle.width, vehicle.height, vehicle.config.color, true);
+      // Draw invincibility shield
+      if (isInvincible) {
+        const time = Date.now();
+        const rotation = (time / 1000) % (Math.PI * 2);
+
+        ctx.strokeStyle = '#8b5cf6';
+        ctx.lineWidth = 3;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#8b5cf6';
+
+        // Rotating shield effect
+        for (let i = 0; i < 6; i++) {
+          const angle = rotation + (i * Math.PI / 3);
+          const x = vehicle.x + vehicle.width / 2 + Math.cos(angle) * 35;
+          const y = vehicle.y + vehicle.height / 2 + Math.sin(angle) * 35;
+          ctx.beginPath();
+          ctx.arc(x, y, 5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.shadowBlur = 0;
+      }
+
+      // Flashing effect when recovering
+      const shouldDraw = !isRecovering || Math.floor(Date.now() / 100) % 2 === 0;
+      if (shouldDraw) {
+        drawVehicle(ctx, vehicle.x, vehicle.y, vehicle.width, vehicle.height, vehicle.config.color, true);
+      }
     }
   }, [gameState]);
 
