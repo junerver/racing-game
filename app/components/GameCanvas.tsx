@@ -122,19 +122,6 @@ export default function GameCanvas({ gameState }: GameCanvasProps) {
 
       drawVehicle(ctx, vehicle.x, vehicle.y, vehicle.width, vehicle.height, vehicle.config.color, true);
     }
-
-    // Draw hearts (health)
-    for (let i = 0; i < gameState.hearts; i++) {
-      ctx.fillStyle = '#ef4444';
-      ctx.font = 'bold 24px sans-serif';
-      ctx.fillText('❤️', 10 + i * 30, 30);
-    }
-
-    // Draw coins
-    ctx.fillStyle = '#fbbf24';
-    ctx.font = 'bold 20px sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText(`💰 ${gameState.coins}`, canvasWidth - 10, 30);
   }, [gameState]);
 
   // Draw a vehicle (car shape)

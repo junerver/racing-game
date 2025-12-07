@@ -221,9 +221,17 @@ export class GameEngine {
   private update(deltaTime: number, currentTime: number): void {
     if (!this.state.vehicle) return;
 
-    // Update speed based on distance
-    const speedMultiplier = getSpeedMultiplier(this.state.activePowerUps);
-    this.state.currentSpeed = calculateGameSpeed(this.state.distance, this.state.maxSpeed) * speedMultiplier;
+    // Update speed based on distance (skip if recovering from collision)
+    if (!this.state.isRecovering) {
+      const speedMultiplier = getSpeedMultiplier(this.state.activePowerUps);
+      this.state.currentSpeed = calculateGameSpeed(this.state.distance, this.state.maxSpeed) * speedMultiplier;
+    } else {
+      // Gradually recover speed
+      this.state.currentSpeed = Math.min(
+        this.state.currentSpeed + this.state.vehicle.stats.acceleration,
+        calculateGameSpeed(this.state.distance, this.state.maxSpeed)
+      );
+    }
 
     // Update distance
     this.state.distance += this.state.currentSpeed;
@@ -275,10 +283,12 @@ export class GameEngine {
     this.checkCollisions();
 
     // Handle recovery from collision
-    if (this.state.isRecovering && this.state.currentSpeed === 0) {
+    if (this.state.isRecovering) {
       const nitroActive = isShopPowerUpActive(this.state.activeShopPowerUps, 'nitro_boost');
       if (nitroActive) {
         this.state.currentSpeed = this.state.maxSpeed;
+        this.state.isRecovering = false;
+      } else if (this.state.currentSpeed >= SPEED.initial) {
         this.state.isRecovering = false;
       }
     }
@@ -379,10 +389,20 @@ export class GameEngine {
     if (!invincible && !this.state.isRecovering) {
       for (const obstacle of this.state.obstacles) {
         if (checkVehicleObstacleCollision(this.state.vehicle, obstacle)) {
+          // Collision penalty: reduce hearts, reset speed, lose all coins
           this.state.hearts--;
           this.state.currentSpeed = 0;
+          this.state.coins = 0;
           this.state.isRecovering = true;
 
+          // Save coins to storage
+          const { getCoins } = require('@/lib/utils/storage');
+          const currentCoins = getCoins();
+          if (currentCoins > 0) {
+            require('@/lib/utils/storage').spendCoins(currentCoins);
+          }
+
+          // Check if game over (hearts == 0)
           if (this.state.hearts <= 0) {
             this.gameOver();
             return;

@@ -8,6 +8,8 @@ import { loadSelectedVehicle, updateHighScore, addTotalDistance, incrementGamesP
 import { DIFFICULTY } from '@/lib/game/constants';
 import GameCanvas from '@/app/components/GameCanvas';
 import GameHUD from '@/app/components/GameHUD';
+import ShopUI from '@/app/components/ShopUI';
+import GameStatus from '@/app/components/GameStatus';
 
 export default function GamePage() {
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -53,6 +55,14 @@ export default function GamePage() {
         } else if (state.status === 'paused') {
           engine.resume();
         }
+      } else if (e.key === '1') {
+        engine.purchaseShopPowerUp('shop_invincibility');
+      } else if (e.key === '2') {
+        engine.purchaseShopPowerUp('machine_gun');
+      } else if (e.key === '3') {
+        engine.purchaseShopPowerUp('rocket_fuel');
+      } else if (e.key === '4') {
+        engine.purchaseShopPowerUp('nitro_boost');
       }
     };
 
@@ -115,6 +125,15 @@ export default function GamePage() {
         <div className="relative">
           <GameCanvas gameState={gameState} />
           <GameHUD gameState={gameState} />
+          {gameState.status === 'playing' && (
+            <>
+              <ShopUI
+                gameState={gameState}
+                onPurchase={(type) => getGameEngine().purchaseShopPowerUp(type)}
+              />
+              <GameStatus gameState={gameState} />
+            </>
+          )}
 
           {/* Overlays */}
           {gameState.status === 'idle' && (
