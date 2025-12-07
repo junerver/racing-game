@@ -71,6 +71,10 @@ export const calculateVehicleStats = (config: VehicleConfig): VehicleStats => {
     acceleration: 0.5 + config.engineLevel * 0.3, // 0.8 - 1.4
     maxSpeed: 8 + config.tireLevel * 2, // 10 - 14
     handling: 3 + config.tireLevel * 1.5, // 4.5 - 7.5 pixels per frame
+    // 平衡机制：引擎等级越高，道具持续时间越短 (1.0 -> 0.7)
+    powerUpDurationMultiplier: 1.15 - config.engineLevel * 0.15,
+    // 平衡机制：轮胎等级越高，操控稳定性越低 (1.0 -> 0.4)
+    handlingStability: 1.2 - config.tireLevel * 0.2,
   };
 };
 

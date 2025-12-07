@@ -24,11 +24,12 @@ export const createPowerUp = (): PowerUp => {
 // Activate a power-up
 export const activatePowerUp = (
   powerUp: PowerUp,
-  currentTime: number
+  currentTime: number,
+  durationMultiplier: number = 1.0
 ): ActivePowerUp => {
   return {
     type: powerUp.type,
-    remainingTime: powerUp.duration,
+    remainingTime: powerUp.duration * durationMultiplier,
     startTime: currentTime,
   };
 };

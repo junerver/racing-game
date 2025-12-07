@@ -307,14 +307,19 @@ export class GameEngine {
     if (!this.state.vehicle) return;
 
     const handling = this.state.vehicle.stats.handling;
+    const stability = this.state.vehicle.stats.handlingStability;
     const minX = GAME_CONFIG.roadOffset;
     const maxX = GAME_CONFIG.roadOffset + GAME_CONFIG.roadWidth - VEHICLE_WIDTH;
 
+    // 平衡机制：稳定性越低，转向越灵敏但更难控制
+    // 高等级轮胎会有"过度转向"效果
+    const effectiveHandling = handling / stability;
+
     if (this.inputState.left) {
-      this.state.vehicle.x = Math.max(minX, this.state.vehicle.x - handling);
+      this.state.vehicle.x = Math.max(minX, this.state.vehicle.x - effectiveHandling);
     }
     if (this.inputState.right) {
-      this.state.vehicle.x = Math.min(maxX, this.state.vehicle.x + handling);
+      this.state.vehicle.x = Math.min(maxX, this.state.vehicle.x + effectiveHandling);
     }
   }
 
@@ -458,7 +463,8 @@ export class GameEngine {
           this.state.coins += 100;
           addCoins(100);
         } else {
-          const activePowerUp = activatePowerUp(powerUp, performance.now());
+          const durationMultiplier = this.state.vehicle?.stats.powerUpDurationMultiplier ?? 1.0;
+          const activePowerUp = activatePowerUp(powerUp, performance.now(), durationMultiplier);
           this.state.activePowerUps = this.state.activePowerUps.filter(
             (p) => p.type !== powerUp.type
           );

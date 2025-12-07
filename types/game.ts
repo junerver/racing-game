@@ -25,6 +25,8 @@ export interface VehicleStats {
   acceleration: number;
   maxSpeed: number;
   handling: number;
+  powerUpDurationMultiplier: number; // 道具持续时间修正（引擎等级越高越短）
+  handlingStability: number; // 操控稳定性（轮胎等级越高越低，增加操作难度）
 }
 
 export interface Vehicle extends Rectangle {
