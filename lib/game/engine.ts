@@ -21,8 +21,11 @@ import {
   getLanePositions,
   calculateVehicleStats,
   DIFFICULTY,
+  DIFFICULTY_MULTIPLIERS,
   COLLISION_RECOVERY_TIME,
   COLLISION_KNOCKBACK,
+  POWERUP_SIZE,
+  POWERUP_CONFIG,
 } from './constants';
 import {
   checkVehicleObstacleCollision,
@@ -49,6 +52,7 @@ export class GameEngine {
   private inputState: InputState;
   private lastObstacleSpawn: number;
   private lastPowerUpSpawn: number;
+  private lastShopPowerUpSpawn: number;
   private animationFrameId: number | null;
   private lastFrameTime: number;
   private onStateChange: ((state: GameState) => void) | null;
@@ -58,6 +62,7 @@ export class GameEngine {
     this.inputState = { left: false, right: false };
     this.lastObstacleSpawn = 0;
     this.lastPowerUpSpawn = 0;
+    this.lastShopPowerUpSpawn = 0;
     this.animationFrameId = null;
     this.lastFrameTime = 0;
     this.onStateChange = null;
@@ -77,6 +82,7 @@ export class GameEngine {
       activeShopPowerUps: [],
       bullets: [],
       difficulty: 1,
+      difficultyLevel: 'medium',
       highScore: 0,
       coins: 0,
       hearts: 3,
@@ -112,6 +118,12 @@ export class GameEngine {
     this.onStateChange = callback;
   }
 
+  // Set difficulty level
+  setDifficultyLevel(level: import('@/types/game').DifficultyLevel): void {
+    this.state.difficultyLevel = level;
+    this.notifyStateChange();
+  }
+
   private notifyStateChange(): void {
     if (this.onStateChange) {
       this.onStateChange({ ...this.state });
@@ -131,13 +143,14 @@ export class GameEngine {
     this.state.activeShopPowerUps = [];
     this.state.bullets = [];
     this.state.currentSpeed = SPEED.initial;
-    this.state.coins = getCoins();
+    this.state.coins = 0;
     this.state.hearts = 3;
     this.state.isRecovering = false;
     this.state.recoveryEndTime = 0;
     this.lastFrameTime = performance.now();
     this.lastObstacleSpawn = this.lastFrameTime;
     this.lastPowerUpSpawn = this.lastFrameTime;
+    this.lastShopPowerUpSpawn = this.lastFrameTime;
 
     this.notifyStateChange();
     this.gameLoop();
@@ -227,14 +240,15 @@ export class GameEngine {
     if (!this.state.vehicle) return;
 
     // Update speed based on distance (skip if recovering from collision)
+    const difficultyMultiplier = DIFFICULTY_MULTIPLIERS[this.state.difficultyLevel];
     if (!this.state.isRecovering) {
       const speedMultiplier = getSpeedMultiplier(this.state.activePowerUps);
-      this.state.currentSpeed = calculateGameSpeed(this.state.distance, this.state.maxSpeed) * speedMultiplier;
+      this.state.currentSpeed = calculateGameSpeed(this.state.distance, this.state.maxSpeed) * speedMultiplier * difficultyMultiplier;
     } else {
       // Gradually recover speed
       this.state.currentSpeed = Math.min(
         this.state.currentSpeed + this.state.vehicle.stats.acceleration,
-        calculateGameSpeed(this.state.distance, this.state.maxSpeed)
+        calculateGameSpeed(this.state.distance, this.state.maxSpeed) * difficultyMultiplier
       );
     }
 
@@ -258,10 +272,16 @@ export class GameEngine {
       this.lastObstacleSpawn = currentTime;
     }
 
-    // Spawn power-ups
-    if (currentTime - this.lastPowerUpSpawn > difficulty.powerUpSpawnRate) {
+    // Spawn basic power-ups (every 2 seconds)
+    if (currentTime - this.lastPowerUpSpawn > 2000) {
       this.spawnPowerUp();
       this.lastPowerUpSpawn = currentTime;
+    }
+
+    // Spawn shop power-ups (every 30 seconds)
+    if (currentTime - this.lastShopPowerUpSpawn > 30000) {
+      this.spawnShopPowerUp();
+      this.lastShopPowerUpSpawn = currentTime;
     }
 
     // Update obstacles
@@ -360,18 +380,43 @@ export class GameEngine {
     }
   }
 
-  // Spawn power-up
+  // Spawn basic power-up
   private spawnPowerUp(): void {
-    if (Math.random() > 0.5) return; // 50% chance to spawn
-
     const powerUp = createPowerUp();
 
-    // Check if position overlaps with obstacles
-    const overlaps = this.state.obstacles.some(
-      (obs) => Math.abs(obs.y - powerUp.y) < 100 && Math.abs(obs.x - powerUp.x) < 50
+    // Check if position has safe distance from obstacles
+    const hasSafeDistance = !this.state.obstacles.some(
+      (obs) => Math.abs(obs.y - powerUp.y) < 250 && Math.abs(obs.x - powerUp.x) < 60
     );
 
-    if (!overlaps) {
+    if (hasSafeDistance) {
+      this.state.powerUps.push(powerUp);
+    }
+  }
+
+  // Spawn shop power-up
+  private spawnShopPowerUp(): void {
+    const lanes = getLanePositions();
+    const laneIndex = Math.floor(Math.random() * lanes.length);
+    const shopTypes: ('shop_invincibility' | 'machine_gun' | 'rocket_fuel' | 'nitro_boost')[] = ['shop_invincibility', 'machine_gun', 'rocket_fuel', 'nitro_boost'];
+    const type = shopTypes[Math.floor(Math.random() * shopTypes.length)];
+
+    const powerUp: PowerUp = {
+      x: lanes[laneIndex] - POWERUP_SIZE / 2,
+      y: -POWERUP_SIZE,
+      width: POWERUP_SIZE,
+      height: POWERUP_SIZE,
+      type,
+      duration: POWERUP_CONFIG[type].duration,
+      active: true,
+    };
+
+    // Check if position has safe distance from obstacles
+    const hasSafeDistance = !this.state.obstacles.some(
+      (obs) => Math.abs(obs.y - powerUp.y) < 250 && Math.abs(obs.x - powerUp.x) < 60
+    );
+
+    if (hasSafeDistance) {
       this.state.powerUps.push(powerUp);
     }
   }
@@ -393,7 +438,7 @@ export class GameEngine {
     const vehicleY = this.state.vehicle ? this.state.vehicle.y + this.state.vehicle.height / 2 : undefined;
 
     this.state.powerUps = this.state.powerUps
-      .map((powerUp) => updatePowerUpPosition(powerUp, this.state.currentSpeed, vehicleX, vehicleY, magnetActive))
+      .map((powerUp) => updatePowerUpPosition(powerUp, this.state.currentSpeed * 0.7, vehicleX, vehicleY, magnetActive))
       .filter((powerUp) => !isOffScreen(powerUp, GAME_CONFIG.canvasHeight) && powerUp.active);
   }
 
@@ -407,10 +452,9 @@ export class GameEngine {
       for (let i = 0; i < this.state.obstacles.length; i++) {
         const obstacle = this.state.obstacles[i];
         if (checkVehicleObstacleCollision(this.state.vehicle, obstacle)) {
-          // Collision penalty: reduce hearts, reset speed, lose all coins
+          // Collision penalty: reduce hearts, reset speed
           this.state.hearts--;
           this.state.currentSpeed = 0;
-          this.state.coins = 0;
 
           // Set recovery time (invincibility period)
           this.state.isRecovering = true;
@@ -424,13 +468,6 @@ export class GameEngine {
 
           // Remove the collided obstacle to prevent repeated collision
           this.state.obstacles.splice(i, 1);
-
-          // Save coins to storage
-          const { getCoins } = require('@/lib/utils/storage');
-          const currentCoins = getCoins();
-          if (currentCoins > 0) {
-            require('@/lib/utils/storage').spendCoins(currentCoins);
-          }
 
           // Check if game over (hearts == 0)
           if (this.state.hearts <= 0) {
@@ -460,8 +497,15 @@ export class GameEngine {
         powerUp.active = false;
 
         if (powerUp.type === 'coin') {
-          this.state.coins += 100;
-          addCoins(100);
+          const coinValue = powerUp.value || 100;
+          this.state.coins += coinValue;
+          addCoins(coinValue);
+        } else if (powerUp.type === 'shop_invincibility' || powerUp.type === 'machine_gun' || powerUp.type === 'rocket_fuel' || powerUp.type === 'nitro_boost') {
+          const activeShopPowerUp = activateShopPowerUp(powerUp.type, performance.now());
+          this.state.activeShopPowerUps = this.state.activeShopPowerUps.filter(
+            (p) => p.type !== powerUp.type
+          );
+          this.state.activeShopPowerUps.push(activeShopPowerUp);
         } else {
           const durationMultiplier = this.state.vehicle?.stats.powerUpDurationMultiplier ?? 1.0;
           const activePowerUp = activatePowerUp(powerUp, performance.now(), durationMultiplier);
@@ -500,15 +544,23 @@ export class GameEngine {
     if (now - this.lastBulletSpawn < 200) return; // Fire rate limit
 
     this.lastBulletSpawn = now;
-    const bullet: import('@/types/game').Bullet = {
-      x: this.state.vehicle.x + this.state.vehicle.width / 2 - 2,
+    const leftBullet: import('@/types/game').Bullet = {
+      x: this.state.vehicle.x + this.state.vehicle.width * 0.25 - 2,
       y: this.state.vehicle.y - 10,
       width: 4,
       height: 10,
       speed: 15,
       active: true,
     };
-    this.state.bullets.push(bullet);
+    const rightBullet: import('@/types/game').Bullet = {
+      x: this.state.vehicle.x + this.state.vehicle.width * 0.75 - 2,
+      y: this.state.vehicle.y - 10,
+      width: 4,
+      height: 10,
+      speed: 15,
+      active: true,
+    };
+    this.state.bullets.push(leftBullet, rightBullet);
   }
 
   // Update bullets

@@ -18,7 +18,7 @@ This is an H5 racing game built with modern web technologies: React, Next.js 16,
 ## Development Commands
 
 ```bash
-# Start development server (http://localhost:3000)
+# Start development server (http://localhost:3389)
 npm run dev
 
 # Build for production
@@ -191,3 +191,17 @@ public/
 8. Add visual polish (animations, particles, effects)
 9. Implement scoring and persistence
 10. Optimize performance and add mobile support
+
+## Documentation Guidelines
+
+### README.md
+- **目的**：面向玩家的游戏说明文档
+- **内容**：游戏玩法、控制方式、道具说明、难度设置等
+- **更新规则**：每次添加新的游戏功能时，必须在 README.md 中添加相应说明
+- **语言风格**：使用玩家友好的语言，避免技术术语
+
+### CHANGELOG.md
+- **目的**：记录开发者对游戏的修改变更
+- **内容**：新增功能、优化改进、Bug修复、游戏平衡调整等
+- **更新规则**：每次修改代码后，必须在 CHANGELOG.md 中记录变更内容
+- **格式**：遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范

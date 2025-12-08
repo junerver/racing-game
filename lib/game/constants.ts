@@ -47,6 +47,13 @@ export const DIFFICULTY = {
   distancePerKm: 1000, // game units per km
 };
 
+// Difficulty level multipliers
+export const DIFFICULTY_MULTIPLIERS = {
+  easy: 0.7,
+  medium: 1.0,
+  hard: 1.2,
+};
+
 // Lane positions (center X of each lane)
 export const getLanePositions = (): number[] => {
   const { roadOffset, laneWidth, laneCount } = GAME_CONFIG;
@@ -87,11 +94,15 @@ export const OBSTACLE_COLORS = {
 
 // Power-up colors and icons
 export const POWERUP_CONFIG = {
-  speed_boost: { color: '#f59e0b', icon: '⚡', duration: 3000 },
-  invincibility: { color: '#8b5cf6', icon: '🛡️', duration: 5000 },
-  magnet: { color: '#ec4899', icon: '🧲', duration: 4000 },
-  score_multiplier: { color: '#10b981', icon: '2×', duration: 5000 },
-  coin: { color: '#fbbf24', icon: '💰', duration: 0 },
+  speed_boost: { color: '#f59e0b', icon: '⚡', duration: 8000 },
+  invincibility: { color: '#8b5cf6', icon: '🛡️', duration: 8000 },
+  magnet: { color: '#ec4899', icon: '🧲', duration: 8000 },
+  score_multiplier: { color: '#10b981', icon: '2×', duration: 8000 },
+  coin: { color: '#fbbf24', icon: '$', duration: 0 },
+  shop_invincibility: { color: '#8b5cf6', icon: '🛡️', duration: 8000 },
+  machine_gun: { color: '#ef4444', icon: '🔫', duration: 10000 },
+  rocket_fuel: { color: '#f97316', icon: '🚀', duration: 6000 },
+  nitro_boost: { color: '#eab308', icon: '⚡', duration: 3000 },
 };
 
 // Shop power-up configurations

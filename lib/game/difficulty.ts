@@ -17,10 +17,10 @@ export const calculateDifficulty = (distance: number): DifficultyConfig => {
     DIFFICULTY.initialObstacleInterval - kmTraveled * DIFFICULTY.obstacleIntervalDecrement
   );
 
-  // Power-up spawn rate slightly increases with difficulty
+  // Power-up spawn rate: 2-3 seconds
   const powerUpSpawnRate = Math.max(
-    3000,
-    DIFFICULTY.powerUpInterval - kmTraveled * 100
+    2000,
+    Math.min(3000, DIFFICULTY.powerUpInterval - kmTraveled * 100)
   );
 
   return {

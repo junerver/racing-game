@@ -3,12 +3,18 @@
 import { PowerUp, PowerUpType, ActivePowerUp } from '@/types/game';
 import { GAME_CONFIG, POWERUP_SIZE, POWERUP_CONFIG, getLanePositions } from './constants';
 
-// Create a new power-up at a random lane
+// Create a new power-up at a random lane (basic power-ups only)
 export const createPowerUp = (): PowerUp => {
   const lanes = getLanePositions();
   const laneIndex = Math.floor(Math.random() * lanes.length);
-  const types: PowerUpType[] = ['speed_boost', 'invincibility', 'magnet', 'score_multiplier', 'coin', 'coin', 'coin'];
+  const types: PowerUpType[] = ['speed_boost', 'invincibility', 'magnet', 'score_multiplier', 'coin', 'coin', 'coin', 'coin', 'coin', 'coin'];
   const type = types[Math.floor(Math.random() * types.length)];
+
+  let value: number | undefined;
+  if (type === 'coin') {
+    const coinValues = [100, 100, 100, 100, 100, 200, 200, 200, 500, 500];
+    value = coinValues[Math.floor(Math.random() * coinValues.length)];
+  }
 
   return {
     x: lanes[laneIndex] - POWERUP_SIZE / 2,
@@ -18,6 +24,7 @@ export const createPowerUp = (): PowerUp => {
     type,
     duration: POWERUP_CONFIG[type].duration,
     active: true,
+    value,
   };
 };
 
@@ -92,14 +99,14 @@ export const updatePowerUpPosition = (
   let newX = powerUp.x;
   let newY = powerUp.y + gameSpeed;
 
-  // Magnet effect: attract power-ups towards vehicle
+  // Magnet effect: attract power-ups towards vehicle (global range)
   if (magnetActive && vehicleX !== undefined && vehicleY !== undefined) {
     const dx = vehicleX - powerUp.x;
     const dy = vehicleY - powerUp.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
 
-    // Attract if within range
-    if (distance < 200 && distance > 0) {
+    // Attract all power-ups on screen
+    if (distance > 0) {
       const attractionStrength = 0.15;
       newX += dx * attractionStrength;
       newY += dy * attractionStrength;

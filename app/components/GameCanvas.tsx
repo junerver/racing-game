@@ -123,8 +123,17 @@ export default function GameCanvas({ gameState }: GameCanvasProps) {
     // Draw bullets
     for (const bullet of gameState.bullets) {
       if (bullet.active) {
-        ctx.fillStyle = '#fbbf24';
+        // Outer glow effect
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#ef4444';
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(bullet.x - 2, bullet.y, bullet.width + 4, bullet.height);
+
+        // Inner bright core
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = '#fef08a';
         ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+        ctx.shadowBlur = 0;
       }
     }
 

@@ -1,36 +1,91 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🏎️ Racing Game
 
-## Getting Started
+一款基于 Next.js 和 TypeScript 开发的 H5 赛车游戏。挑战自己，在避开障碍物的同时尽可能行驶更远的距离！
 
-First, run the development server:
+## 🎮 游戏玩法
+
+- **目标**：在高速行驶中避开障碍车辆，收集道具和金币，尽可能行驶更远的距离
+- **操作**：使用 ← → 方向键控制车辆左右移动
+- **生命值**：游戏开始时有 3 颗心，每次碰撞失去 1 颗心，失去所有心后游戏结束
+- **速度**：车辆速度会随着行驶距离逐渐增加，难度也会相应提升
+
+## 🎯 难度选择
+
+游戏提供三种难度模式：
+
+- 🟢 **简单模式**：速度降低 30%，适合新手玩家
+- 🟡 **中等模式**：标准速度，平衡的游戏体验
+- 🔴 **困难模式**：速度提升 20%，挑战极限
+
+## 💎 道具系统
+
+### 基础道具（每 2 秒出现）
+
+- ⚡ **速度提升**：速度提升至 1.5 倍（持续 8 秒）
+- 🛡️ **无敌**：无视碰撞，不会受到伤害（持续 8 秒）
+- 🧲 **磁铁**：自动吸引屏幕上所有道具（持续 8 秒）
+- 2× **分数倍增器**：分数获取速度翻倍（持续 8 秒）
+- $ **金币**：立即获得金币，面额有 100/200/500 三种
+
+### 商店道具（每 30 秒出现）
+
+- 🛡️ **商店无敌**：无视碰撞（持续 8 秒）
+- 🔫 **机枪**：发射双弹幕摧毁前方车辆（持续 10 秒）
+- 🚀 **火箭燃料**：速度提高两倍突破极速（持续 6 秒）
+- ⚡ **氮气加速**：快速加速到极速（持续 3 秒）
+
+## 🎮 控制方式
+
+- **← →** - 左右移动车辆
+- **ESC** - 暂停/继续游戏
+- **SPACE / ENTER** - 开始/重新开始游戏
+- **1/2/3/4** - 购买商店道具（需要金币）
+
+## 🚀 开发和运行
+
+### 技术栈
+
+- **框架**：Next.js 16.0.7 (App Router)
+- **React**：19.2.0
+- **TypeScript**：5.x
+- **样式**：Tailwind CSS 4
+- **包管理器**：npm
+
+### 开发命令
 
 ```bash
+# 启动开发服务器 (http://localhost:3389)
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# 构建生产版本
+npm run build
+
+# 启动生产服务器
+npm start
+
+# 运行代码检查
+npm run lint
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 📝 游戏特性
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- ✅ 渐进式难度系统
+- ✅ 多种道具和特殊效果
+- ✅ 金币系统和商店
+- ✅ 排行榜记录
+- ✅ 车辆自定义系统
+- ✅ 流畅的 60fps 游戏体验
+- ✅ 响应式设计
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🎨 游戏画面
 
-## Learn More
+游戏采用 Canvas 渲染，提供流畅的动画效果和视觉反馈：
+- 动态道路线条
+- 道具光晕效果
+- 碰撞恢复闪烁
+- 无敌护盾特效
+- 子弹光晕效果
 
-To learn more about Next.js, take a look at the following resources:
+## 📄 许可证
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+本项目仅供学习和娱乐使用。

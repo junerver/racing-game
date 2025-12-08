@@ -14,6 +14,7 @@ import GameStatus from '@/app/components/GameStatus';
 export default function GamePage() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [showDifficultySelect, setShowDifficultySelect] = useState(false);
 
   // Initialize game engine
   useEffect(() => {
@@ -92,10 +93,16 @@ export default function GamePage() {
   }, [gameState?.status, gameState?.score, gameState?.distance]);
 
   const handleStart = useCallback(() => {
+    setShowDifficultySelect(true);
+  }, []);
+
+  const handleDifficultySelect = useCallback((level: 'easy' | 'medium' | 'hard') => {
     const engine = getGameEngine();
+    engine.setDifficultyLevel(level);
     engine.reset();
     engine.start();
     incrementGamesPlayed();
+    setShowDifficultySelect(false);
   }, []);
 
   const handleRestart = useCallback(() => {
@@ -136,7 +143,7 @@ export default function GamePage() {
           )}
 
           {/* Overlays */}
-          {gameState.status === 'idle' && (
+          {gameState.status === 'idle' && !showDifficultySelect && (
             <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center rounded-lg">
               <h2 className="text-3xl font-bold text-white mb-4">Ready to Race?</h2>
               <p className="text-gray-300 mb-6">
@@ -149,6 +156,38 @@ export default function GamePage() {
                 Start
               </button>
               <p className="text-gray-400 text-sm mt-4">or press SPACE / ENTER</p>
+            </div>
+          )}
+
+          {showDifficultySelect && (
+            <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center rounded-lg">
+              <h2 className="text-3xl font-bold text-white mb-6">Select Difficulty</h2>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => handleDifficultySelect('easy')}
+                  className="px-12 py-4 bg-green-600 hover:bg-green-700 text-white text-xl font-semibold rounded-lg transition-colors"
+                >
+                  🟢 Easy (70% Speed)
+                </button>
+                <button
+                  onClick={() => handleDifficultySelect('medium')}
+                  className="px-12 py-4 bg-yellow-600 hover:bg-yellow-700 text-white text-xl font-semibold rounded-lg transition-colors"
+                >
+                  🟡 Medium (100% Speed)
+                </button>
+                <button
+                  onClick={() => handleDifficultySelect('hard')}
+                  className="px-12 py-4 bg-red-600 hover:bg-red-700 text-white text-xl font-semibold rounded-lg transition-colors"
+                >
+                  🔴 Hard (120% Speed)
+                </button>
+              </div>
+              <button
+                onClick={() => setShowDifficultySelect(false)}
+                className="mt-6 text-gray-400 hover:text-gray-200 text-sm"
+              >
+                ← Back
+              </button>
             </div>
           )}
 

@@ -47,12 +47,13 @@ export interface Obstacle extends Rectangle {
 }
 
 // Power-up types
-export type PowerUpType = 'speed_boost' | 'invincibility' | 'magnet' | 'score_multiplier' | 'coin';
+export type PowerUpType = 'speed_boost' | 'invincibility' | 'magnet' | 'score_multiplier' | 'coin' | 'shop_invincibility' | 'machine_gun' | 'rocket_fuel' | 'nitro_boost';
 
 export interface PowerUp extends Rectangle {
   type: PowerUpType;
   duration: number;
   active: boolean;
+  value?: number;
 }
 
 export interface ActivePowerUp {
@@ -87,6 +88,7 @@ export interface Bullet extends Rectangle {
 
 // Game state
 export type GameStatus = 'idle' | 'playing' | 'paused' | 'game_over';
+export type DifficultyLevel = 'easy' | 'medium' | 'hard';
 
 export interface GameState {
   status: GameStatus;
@@ -101,6 +103,7 @@ export interface GameState {
   activeShopPowerUps: ActiveShopPowerUp[];
   bullets: Bullet[];
   difficulty: number;
+  difficultyLevel: DifficultyLevel;
   highScore: number;
   coins: number;
   hearts: number;
