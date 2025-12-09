@@ -1,23 +1,25 @@
 'use client';
 
-import { GameState, ShopPowerUpType } from '@/types/game';
-import { SHOP_POWERUP_CONFIG } from '@/lib/game/constants';
+import { GameState, PowerUpType } from '@/types/game';
+import { POWERUP_CONFIG } from '@/lib/game/constants';
 
 interface ShopUIProps {
   gameState: GameState;
-  onPurchase: (type: ShopPowerUpType) => void;
+  onPurchase: (type: PowerUpType) => void;
 }
 
 export default function ShopUI({ gameState, onPurchase }: ShopUIProps) {
-  const shopItems: ShopPowerUpType[] = ['shop_invincibility', 'machine_gun', 'rocket_fuel', 'nitro_boost'];
+  const shopItems = Object.entries(POWERUP_CONFIG)
+    .filter(([_, config]) => config.isSellable)
+    .map(([type]) => type as PowerUpType);
 
   return (
     <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10">
       <div className="grid grid-cols-2 gap-1">
         {shopItems.map((type) => {
-          const config = SHOP_POWERUP_CONFIG[type];
-          const isActive = gameState.activeShopPowerUps.some(p => p.type === type);
-          const canAfford = gameState.coins >= config.price;
+          const config = POWERUP_CONFIG[type];
+          const isActive = gameState.activePowerUps.some(p => p.type === type);
+          const canAfford = gameState.coins >= (config.price || 0);
 
           return (
             <button

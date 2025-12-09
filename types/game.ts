@@ -46,11 +46,33 @@ export interface Obstacle extends Rectangle {
   color: string;
 }
 
-// Power-up types
-export type PowerUpType = 'speed_boost' | 'invincibility' | 'magnet' | 'score_multiplier' | 'coin' | 'shop_invincibility' | 'machine_gun' | 'rocket_fuel' | 'nitro_boost' | 'heart';
+// Unified power-up types
+export type PowerUpType =
+  // Basic power-ups
+  | 'speed_boost' | 'invincibility' | 'magnet' | 'score_multiplier' | 'coin' | 'heart'
+  // Shop power-ups
+  | 'machine_gun' | 'rocket_fuel' | 'nitro_boost'
+  // Combo power-ups
+  | 'rotating_shield_gun' | 'quad_machine_gun' | 'storm_lightning' | 'double_heart' | 'double_coin';
 
-// Combo power-up types (合成道具)
-export type ComboPowerUpType = 'rotating_shield_gun' | 'quad_machine_gun' | 'storm_lightning' | 'double_heart' | 'double_coin';
+export interface PowerUpConfig {
+  name: string;
+  icon: string;
+  color: string;
+  duration: number;
+  description: string;
+  // Shop properties
+  isSellable?: boolean;
+  price?: number;
+  // Spawn properties
+  canSpawnOnRoad?: boolean;
+  spawnInterval?: number; // ms
+  // Combo properties
+  isCombo?: boolean;
+  comboSources?: [PowerUpType, PowerUpType];
+  // Special properties
+  value?: number; // for coins
+}
 
 export interface PowerUp extends Rectangle {
   type: PowerUpType;
@@ -66,45 +88,10 @@ export interface ActivePowerUp {
   totalDuration: number;
 }
 
-// Shop power-up types (purchasable with coins)
-export type ShopPowerUpType = 'shop_invincibility' | 'machine_gun' | 'rocket_fuel' | 'nitro_boost';
-
-export interface ShopPowerUp {
-  type: ShopPowerUpType;
-  name: string;
-  price: number;
-  duration: number;
-  icon: string;
-  description: string;
-}
-
-export interface ActiveShopPowerUp {
-  type: ShopPowerUpType;
-  remainingTime: number;
-  startTime: number;
-  totalDuration: number;
-}
-
 // Bullet for machine gun
 export interface Bullet extends Rectangle {
   speed: number;
   active: boolean;
-}
-
-// Combo power-up (合成道具)
-export interface ComboPowerUp {
-  type: ComboPowerUpType;
-  sourceTypes: PowerUpType[]; // 合成来源道具
-  duration: number;
-  icon: string;
-  description: string;
-}
-
-export interface ActiveComboPowerUp {
-  type: ComboPowerUpType;
-  remainingTime: number;
-  startTime: number;
-  totalDuration: number;
 }
 
 // Slot machine (老虎机)
@@ -136,9 +123,7 @@ export interface GameState {
   vehicle: Vehicle | null;
   obstacles: Obstacle[];
   powerUps: PowerUp[];
-  activePowerUps: ActivePowerUp[];
-  activeShopPowerUps: ActiveShopPowerUp[];
-  activeComboPowerUps: ActiveComboPowerUp[];
+  activePowerUps: ActivePowerUp[]; // Unified queue for all active power-ups
   bullets: Bullet[];
   difficulty: number;
   difficultyLevel: DifficultyLevel;
@@ -148,7 +133,7 @@ export interface GameState {
   isRecovering: boolean;
   recoveryEndTime: number;
   slotMachine: SlotMachineState;
-  destroyedObstacleCount: number; // 机枪摧毁的障碍车辆数量
+  destroyedObstacleCount: number;
 }
 
 // Input state

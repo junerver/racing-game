@@ -57,7 +57,7 @@ export default function GamePage() {
           engine.resume();
         }
       } else if (e.key === '1') {
-        engine.purchaseShopPowerUp('shop_invincibility');
+        engine.purchaseShopPowerUp('invincibility');
       } else if (e.key === '2') {
         engine.purchaseShopPowerUp('machine_gun');
       } else if (e.key === '3') {

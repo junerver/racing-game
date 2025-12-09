@@ -6,7 +6,6 @@ import {
   GAME_CONFIG,
   ROAD_COLORS,
   POWERUP_CONFIG,
-  SHOP_POWERUP_CONFIG,
   COLLISION_RECOVERY_TIME,
   COLLISION_RECOVERY_VISUAL_TIME,
   getLanePositions,
@@ -147,8 +146,7 @@ export default function GameCanvas({ gameState }: GameCanvasProps) {
     // Draw player vehicle
     if (gameState.vehicle) {
       const { vehicle } = gameState;
-      const isInvincible = gameState.activePowerUps.some(p => p.type === 'invincibility') ||
-                           gameState.activeShopPowerUps.some(p => p.type === 'shop_invincibility');
+      const isInvincible = gameState.activePowerUps.some(p => p.type === 'invincibility');
       const isRecovering = gameState.isRecovering;
       const remainingRecoveryTime = gameState.recoveryEndTime - performance.now();
       const showRecoveryEffect = isRecovering && remainingRecoveryTime > (COLLISION_RECOVERY_TIME - COLLISION_RECOVERY_VISUAL_TIME);

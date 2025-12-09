@@ -1,7 +1,7 @@
 'use client';
 
 import { GameState } from '@/types/game';
-import { POWERUP_CONFIG, SHOP_POWERUP_CONFIG, DIFFICULTY, COMBO_POWERUP_CONFIG } from '@/lib/game/constants';
+import { POWERUP_CONFIG, DIFFICULTY } from '@/lib/game/constants';
 import { getDifficultyTier, getDifficultyColor } from '@/lib/game/difficulty';
 
 interface GameHUDProps {
@@ -36,106 +36,38 @@ export default function GameHUD({ gameState }: GameHUDProps) {
 
       {/* Active Power-ups */}
       {gameState.activePowerUps.length > 0 && (
-        <div className="mt-4 flex gap-2 justify-center">
+        <div className="mt-4 flex gap-2 justify-center flex-wrap">
           {gameState.activePowerUps.map((powerUp, index) => {
             const config = POWERUP_CONFIG[powerUp.type];
             const progress = powerUp.remainingTime / powerUp.totalDuration;
+            const isCombo = config.isCombo;
 
             return (
               <div
                 key={`${powerUp.type}-${index}`}
-                className="bg-black/70 rounded-lg px-3 py-2 flex items-center gap-2"
+                className={`rounded-lg px-3 py-2 flex items-center gap-2 ${
+                  isCombo
+                    ? 'bg-gradient-to-r from-purple-900/80 to-pink-900/80 border-2 border-purple-500/50'
+                    : 'bg-black/70'
+                }`}
               >
                 <span
                   className="text-xl"
-                  style={{ filter: `drop-shadow(0 0 4px ${config.color})` }}
+                  style={{ filter: `drop-shadow(0 0 ${isCombo ? 6 : 4}px ${config.color})` }}
                 >
                   {config.icon}
                 </span>
                 <div className="w-16 h-2 bg-gray-700 rounded-full overflow-hidden">
                   <div
-                    className="h-full"
+                    className={`h-full ${isCombo ? 'bg-gradient-to-r from-purple-500 to-pink-500' : ''}`}
                     style={{
                       width: `${progress * 100}%`,
-                      backgroundColor: config.color,
+                      backgroundColor: isCombo ? undefined : config.color,
                       boxShadow: `0 0 8px ${config.color}`,
                     }}
                   />
                 </div>
-                <span className="text-xs text-gray-300">
-                  {Math.ceil(powerUp.remainingTime / 1000)}s
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Active Shop Power-ups */}
-      {gameState.activeShopPowerUps.length > 0 && (
-        <div className="mt-2 flex gap-2 justify-center">
-          {gameState.activeShopPowerUps.map((powerUp, index) => {
-            const config = POWERUP_CONFIG[powerUp.type];
-            const progress = powerUp.remainingTime / powerUp.totalDuration;
-
-            return (
-              <div
-                key={`${powerUp.type}-${index}`}
-                className="bg-black/70 rounded-lg px-3 py-2 flex items-center gap-2"
-              >
-                <span
-                  className="text-xl"
-                  style={{ filter: `drop-shadow(0 0 4px ${config.color})` }}
-                >
-                  {config.icon}
-                </span>
-                <div className="w-16 h-2 bg-gray-700 rounded-full overflow-hidden">
-                  <div
-                    className="h-full"
-                    style={{
-                      width: `${progress * 100}%`,
-                      backgroundColor: config.color,
-                      boxShadow: `0 0 8px ${config.color}`,
-                    }}
-                  />
-                </div>
-                <span className="text-xs text-gray-300">
-                  {Math.ceil(powerUp.remainingTime / 1000)}s
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Active Combo Power-ups */}
-      {gameState.activeComboPowerUps.length > 0 && (
-        <div className="mt-2 flex gap-2 justify-center">
-          {gameState.activeComboPowerUps.map((powerUp, index) => {
-            const config = COMBO_POWERUP_CONFIG[powerUp.type];
-            const progress = powerUp.remainingTime / powerUp.totalDuration;
-
-            return (
-              <div
-                key={`${powerUp.type}-${index}`}
-                className="bg-gradient-to-r from-purple-900/80 to-pink-900/80 rounded-lg px-3 py-2 flex items-center gap-2 border-2 border-purple-500/50"
-              >
-                <span
-                  className="text-xl"
-                  style={{ filter: 'drop-shadow(0 0 6px #a855f7)' }}
-                >
-                  {config.icon}
-                </span>
-                <div className="w-16 h-2 bg-gray-700 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-purple-500 to-pink-500"
-                    style={{
-                      width: `${progress * 100}%`,
-                      boxShadow: '0 0 8px #a855f7',
-                    }}
-                  />
-                </div>
-                <span className="text-xs text-purple-300">
+                <span className={`text-xs ${isCombo ? 'text-purple-300' : 'text-gray-300'}`}>
                   {Math.ceil(powerUp.remainingTime / 1000)}s
                 </span>
               </div>
