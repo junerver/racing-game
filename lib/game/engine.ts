@@ -581,12 +581,17 @@ export class GameEngine {
         powerUp.active = false;
 
         if (powerUp.type === 'coin') {
-          let coinValue = powerUp.value || 100;
-          if (isPowerUpActive(this.state.activePowerUps, 'double_coin')) {
-            coinValue *= 2;
+          const coinValue = powerUp.value || 100;
+          const comboType = checkComboMatch(powerUp.type, this.state.activePowerUps);
+
+          if (comboType === 'double_coin') {
+            this.state.coins += coinValue * 2;
+            addCoins(coinValue * 2);
+            this.state.activePowerUps.pop(); // Remove score_multiplier
+          } else {
+            this.state.coins += coinValue;
+            addCoins(coinValue);
           }
-          this.state.coins += coinValue;
-          addCoins(coinValue);
           this.state.slotMachine = addCoinToSlotMachine(this.state.slotMachine, coinValue);
         } else if (powerUp.type === 'heart') {
           const comboType = checkComboMatch(powerUp.type, this.state.activePowerUps);
