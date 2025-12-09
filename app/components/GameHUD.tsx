@@ -1,7 +1,7 @@
 'use client';
 
 import { GameState } from '@/types/game';
-import { POWERUP_CONFIG, SHOP_POWERUP_CONFIG, DIFFICULTY } from '@/lib/game/constants';
+import { POWERUP_CONFIG, SHOP_POWERUP_CONFIG, DIFFICULTY, COMBO_POWERUP_CONFIG } from '@/lib/game/constants';
 import { getDifficultyTier, getDifficultyColor } from '@/lib/game/difficulty';
 
 interface GameHUDProps {
@@ -100,6 +100,42 @@ export default function GameHUD({ gameState }: GameHUDProps) {
                   />
                 </div>
                 <span className="text-xs text-gray-300">
+                  {Math.ceil(powerUp.remainingTime / 1000)}s
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Active Combo Power-ups */}
+      {gameState.activeComboPowerUps.length > 0 && (
+        <div className="mt-2 flex gap-2 justify-center">
+          {gameState.activeComboPowerUps.map((powerUp, index) => {
+            const config = COMBO_POWERUP_CONFIG[powerUp.type];
+            const progress = powerUp.remainingTime / powerUp.totalDuration;
+
+            return (
+              <div
+                key={`${powerUp.type}-${index}`}
+                className="bg-gradient-to-r from-purple-900/80 to-pink-900/80 rounded-lg px-3 py-2 flex items-center gap-2 border-2 border-purple-500/50"
+              >
+                <span
+                  className="text-xl"
+                  style={{ filter: 'drop-shadow(0 0 6px #a855f7)' }}
+                >
+                  {config.icon}
+                </span>
+                <div className="w-16 h-2 bg-gray-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-purple-500 to-pink-500"
+                    style={{
+                      width: `${progress * 100}%`,
+                      boxShadow: '0 0 8px #a855f7',
+                    }}
+                  />
+                </div>
+                <span className="text-xs text-purple-300">
                   {Math.ceil(powerUp.remainingTime / 1000)}s
                 </span>
               </div>

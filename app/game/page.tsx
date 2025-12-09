@@ -64,6 +64,9 @@ export default function GamePage() {
         engine.purchaseShopPowerUp('rocket_fuel');
       } else if (e.key === '4') {
         engine.purchaseShopPowerUp('nitro_boost');
+      } else if (e.key === 's' || e.key === 'S') {
+        // Trigger slot machine
+        engine.triggerSlotMachine();
       }
     };
 
@@ -138,7 +141,10 @@ export default function GamePage() {
                 gameState={gameState}
                 onPurchase={(type) => getGameEngine().purchaseShopPowerUp(type)}
               />
-              <GameStatus gameState={gameState} />
+              <GameStatus
+                gameState={gameState}
+                onSlotMachineSpin={() => getGameEngine().triggerSlotMachine()}
+              />
             </>
           )}
 
@@ -241,6 +247,7 @@ export default function GamePage() {
           <span>← → Move</span>
           <span>ESC Pause</span>
           <span>SPACE Start/Restart</span>
+          <span>S Slot Machine</span>
         </div>
 
         {/* Back to menu */}

@@ -46,6 +46,9 @@ import {
   isShopPowerUpActive,
 } from './powerups';
 import { getHighScore, getCoins, addCoins, spendCoins, addLeaderboardEntry } from '@/lib/utils/storage';
+import { createSlotMachineState, addCoinToSlotMachine, spinSlotMachine, calculateSlotMachineReward, completeSlotMachineSpin } from './slotmachine';
+import { checkComboMatch, activateComboPowerUp, updateActiveComboPowerUps, removeSourcePowerUps, removeSourceShopPowerUps, isComboPowerUpActive } from './combo';
+import { MACHINE_GUN_COIN_REWARD } from './constants';
 
 export class GameEngine {
   private state: GameState;
@@ -82,6 +85,7 @@ export class GameEngine {
       powerUps: [],
       activePowerUps: [],
       activeShopPowerUps: [],
+      activeComboPowerUps: [],
       bullets: [],
       difficulty: 1,
       difficultyLevel: 'medium',
@@ -90,6 +94,8 @@ export class GameEngine {
       hearts: 3,
       isRecovering: false,
       recoveryEndTime: 0,
+      slotMachine: createSlotMachineState(),
+      destroyedObstacleCount: 0,
     };
   }
 
@@ -143,12 +149,15 @@ export class GameEngine {
     this.state.powerUps = [];
     this.state.activePowerUps = [];
     this.state.activeShopPowerUps = [];
+    this.state.activeComboPowerUps = [];
     this.state.bullets = [];
     this.state.currentSpeed = SPEED.initial;
     this.state.coins = 0;
     this.state.hearts = 3;
     this.state.isRecovering = false;
     this.state.recoveryEndTime = 0;
+    this.state.slotMachine = createSlotMachineState();
+    this.state.destroyedObstacleCount = 0;
     this.lastFrameTime = performance.now();
     this.lastObstacleSpawn = this.lastFrameTime;
     this.lastPowerUpSpawn = this.lastFrameTime;
@@ -340,12 +349,23 @@ export class GameEngine {
       this.state.recoveryEndTime = currentTime + COLLISION_RECOVERY_TIME;
     }
 
+    // Update active combo power-ups timer
+    this.state.activeComboPowerUps = updateActiveComboPowerUps(this.state.activeComboPowerUps, deltaTime);
+
     // Update bullets
     this.updateBullets();
 
-    // Spawn bullets if machine gun is active
-    if (isShopPowerUpActive(this.state.activeShopPowerUps, 'machine_gun')) {
-      this.spawnBullet();
+    // Spawn bullets if machine gun or combo machine gun is active
+    const hasQuadMachineGun = isComboPowerUpActive(this.state.activeComboPowerUps, 'quad_machine_gun');
+    const hasRotatingShieldGun = isComboPowerUpActive(this.state.activeComboPowerUps, 'rotating_shield_gun');
+
+    if (isShopPowerUpActive(this.state.activeShopPowerUps, 'machine_gun') || hasQuadMachineGun || hasRotatingShieldGun) {
+      this.spawnBullet(hasQuadMachineGun, hasRotatingShieldGun);
+    }
+
+    // Storm lightning effect - clear all obstacles every 2 seconds
+    if (isComboPowerUpActive(this.state.activeComboPowerUps, 'storm_lightning')) {
+      this.handleStormLightning(currentTime);
     }
 
     // Check collisions
@@ -355,6 +375,16 @@ export class GameEngine {
     if (this.state.isRecovering && currentTime >= this.state.recoveryEndTime) {
       this.state.isRecovering = false;
       this.state.recoveryEndTime = 0;
+    }
+
+    // Check coin limit and convert to health
+    if (this.state.coins >= 9999) {
+      if (this.state.hearts < 3) {
+        this.state.hearts++;
+        this.state.coins = 0;
+      } else {
+        this.state.coins = 9999;
+      }
     }
   }
 
@@ -546,6 +576,13 @@ export class GameEngine {
         if (this.checkBulletObstacleCollision(bullet, obstacle)) {
           bullet.active = false;
           this.state.obstacles = this.state.obstacles.filter(o => o !== obstacle);
+          this.state.destroyedObstacleCount++;
+
+          // Award coins for destroyed obstacles
+          const coinReward = MACHINE_GUN_COIN_REWARD;
+          this.state.coins += coinReward;
+          addCoins(coinReward);
+
           break;
         }
       }
@@ -557,33 +594,75 @@ export class GameEngine {
         powerUp.active = false;
 
         if (powerUp.type === 'coin') {
-          const coinValue = powerUp.value || 100;
+          let coinValue = powerUp.value || 100;
+
+          // Check for double_coin combo
+          if (isComboPowerUpActive(this.state.activeComboPowerUps, 'double_coin')) {
+            coinValue *= 2;
+          }
+
           this.state.coins += coinValue;
           addCoins(coinValue);
-        } else if (powerUp.type === 'heart') {
-          this.state.hearts = Math.min(this.state.hearts + 1, 3);
-        } else if (powerUp.type === 'shop_invincibility' || powerUp.type === 'machine_gun' || powerUp.type === 'rocket_fuel' || powerUp.type === 'nitro_boost') {
-          const existingShopPowerUp = this.state.activeShopPowerUps.find((p) => p.type === powerUp.type);
 
-          if (existingShopPowerUp) {
-            const config = require('./constants').SHOP_POWERUP_CONFIG[powerUp.type];
-            existingShopPowerUp.remainingTime += config.duration;
-            existingShopPowerUp.totalDuration = existingShopPowerUp.remainingTime;
+          // Add coin to slot machine
+          this.state.slotMachine = addCoinToSlotMachine(this.state.slotMachine, coinValue);
+        } else if (powerUp.type === 'heart') {
+          // Check for double_heart combo
+          const comboType = checkComboMatch(powerUp.type, this.state.activePowerUps);
+          if (comboType === 'double_heart') {
+            this.state.hearts = Math.min(this.state.hearts + 2, 3);
+            this.state.activePowerUps = removeSourcePowerUps(this.state.activePowerUps, comboType);
           } else {
-            const activeShopPowerUp = activateShopPowerUp(powerUp.type, performance.now());
-            this.state.activeShopPowerUps.push(activeShopPowerUp);
+            this.state.hearts = Math.min(this.state.hearts + 1, 3);
+          }
+        } else if (powerUp.type === 'shop_invincibility' || powerUp.type === 'machine_gun' || powerUp.type === 'rocket_fuel' || powerUp.type === 'nitro_boost') {
+          // Check for combo match first
+          const comboType = checkComboMatch(powerUp.type, this.state.activePowerUps, this.state.activeShopPowerUps);
+
+          if (comboType) {
+            // Activate combo power-up
+            const activeComboPowerUp = activateComboPowerUp(comboType, performance.now());
+            this.state.activeComboPowerUps.push(activeComboPowerUp);
+
+            // Remove source power-ups from both arrays
+            this.state.activePowerUps = removeSourcePowerUps(this.state.activePowerUps, comboType);
+            this.state.activeShopPowerUps = removeSourceShopPowerUps(this.state.activeShopPowerUps, comboType);
+          } else {
+            const existingShopPowerUp = this.state.activeShopPowerUps.find((p) => p.type === powerUp.type);
+
+            if (existingShopPowerUp) {
+              const config = require('./constants').SHOP_POWERUP_CONFIG[powerUp.type];
+              existingShopPowerUp.remainingTime += config.duration;
+              existingShopPowerUp.totalDuration = existingShopPowerUp.remainingTime;
+            } else {
+              const activeShopPowerUp = activateShopPowerUp(powerUp.type, performance.now());
+              this.state.activeShopPowerUps.push(activeShopPowerUp);
+            }
           }
         } else {
-          const durationMultiplier = this.state.vehicle?.stats.powerUpDurationMultiplier ?? 1.0;
-          const existingPowerUp = this.state.activePowerUps.find((p) => p.type === powerUp.type);
+          // Check for combo match (check both basic and shop power-ups)
+          const comboType = checkComboMatch(powerUp.type, this.state.activePowerUps, this.state.activeShopPowerUps);
 
-          if (existingPowerUp) {
-            const additionalDuration = powerUp.duration * durationMultiplier;
-            existingPowerUp.remainingTime += additionalDuration;
-            existingPowerUp.totalDuration = existingPowerUp.remainingTime;
+          if (comboType) {
+            // Activate combo power-up
+            const activeComboPowerUp = activateComboPowerUp(comboType, performance.now());
+            this.state.activeComboPowerUps.push(activeComboPowerUp);
+
+            // Remove source power-ups from both arrays
+            this.state.activePowerUps = removeSourcePowerUps(this.state.activePowerUps, comboType);
+            this.state.activeShopPowerUps = removeSourceShopPowerUps(this.state.activeShopPowerUps, comboType);
           } else {
-            const activePowerUp = activatePowerUp(powerUp, performance.now(), durationMultiplier);
-            this.state.activePowerUps.push(activePowerUp);
+            const durationMultiplier = this.state.vehicle?.stats.powerUpDurationMultiplier ?? 1.0;
+            const existingPowerUp = this.state.activePowerUps.find((p) => p.type === powerUp.type);
+
+            if (existingPowerUp) {
+              const additionalDuration = powerUp.duration * durationMultiplier;
+              existingPowerUp.remainingTime += additionalDuration;
+              existingPowerUp.totalDuration = existingPowerUp.remainingTime;
+            } else {
+              const activePowerUp = activatePowerUp(powerUp, performance.now(), durationMultiplier);
+              this.state.activePowerUps.push(activePowerUp);
+            }
           }
         }
       }
@@ -597,11 +676,26 @@ export class GameEngine {
 
     if (spendCoins(config.price)) {
       this.state.coins = getCoins();
-      const activeShopPowerUp = activateShopPowerUp(type, performance.now());
-      this.state.activeShopPowerUps = this.state.activeShopPowerUps.filter(
-        (p) => p.type !== type
-      );
-      this.state.activeShopPowerUps.push(activeShopPowerUp);
+
+      // Check for combo match
+      const comboType = checkComboMatch(type, this.state.activePowerUps, this.state.activeShopPowerUps);
+
+      if (comboType) {
+        // Activate combo power-up
+        const activeComboPowerUp = activateComboPowerUp(comboType, performance.now());
+        this.state.activeComboPowerUps.push(activeComboPowerUp);
+
+        // Remove source power-ups from both arrays
+        this.state.activePowerUps = removeSourcePowerUps(this.state.activePowerUps, comboType);
+        this.state.activeShopPowerUps = removeSourceShopPowerUps(this.state.activeShopPowerUps, comboType);
+      } else {
+        const activeShopPowerUp = activateShopPowerUp(type, performance.now());
+        this.state.activeShopPowerUps = this.state.activeShopPowerUps.filter(
+          (p) => p.type !== type
+        );
+        this.state.activeShopPowerUps.push(activeShopPowerUp);
+      }
+
       this.notifyStateChange();
       return true;
     }
@@ -610,29 +704,88 @@ export class GameEngine {
 
   // Spawn bullet
   private lastBulletSpawn = 0;
-  private spawnBullet(): void {
+  private spawnBullet(isQuadGun: boolean = false, isRotatingGun: boolean = false): void {
     if (!this.state.vehicle) return;
     const now = performance.now();
     if (now - this.lastBulletSpawn < 200) return; // Fire rate limit
 
     this.lastBulletSpawn = now;
-    const leftBullet: import('@/types/game').Bullet = {
-      x: this.state.vehicle.x + this.state.vehicle.width * 0.25 - 2,
-      y: this.state.vehicle.y - 10,
-      width: 4,
-      height: 10,
-      speed: 15,
-      active: true,
-    };
-    const rightBullet: import('@/types/game').Bullet = {
-      x: this.state.vehicle.x + this.state.vehicle.width * 0.75 - 2,
-      y: this.state.vehicle.y - 10,
-      width: 4,
-      height: 10,
-      speed: 15,
-      active: true,
-    };
-    this.state.bullets.push(leftBullet, rightBullet);
+
+    if (isQuadGun) {
+      // Four-lane machine gun
+      const bullets: import('@/types/game').Bullet[] = [
+        {
+          x: this.state.vehicle.x + this.state.vehicle.width * 0.15 - 2,
+          y: this.state.vehicle.y - 10,
+          width: 4,
+          height: 10,
+          speed: 15,
+          active: true,
+        },
+        {
+          x: this.state.vehicle.x + this.state.vehicle.width * 0.35 - 2,
+          y: this.state.vehicle.y - 10,
+          width: 4,
+          height: 10,
+          speed: 15,
+          active: true,
+        },
+        {
+          x: this.state.vehicle.x + this.state.vehicle.width * 0.65 - 2,
+          y: this.state.vehicle.y - 10,
+          width: 4,
+          height: 10,
+          speed: 15,
+          active: true,
+        },
+        {
+          x: this.state.vehicle.x + this.state.vehicle.width * 0.85 - 2,
+          y: this.state.vehicle.y - 10,
+          width: 4,
+          height: 10,
+          speed: 15,
+          active: true,
+        },
+      ];
+      this.state.bullets.push(...bullets);
+    } else if (isRotatingGun) {
+      // Rotating shield gun - circular pattern
+      const centerX = this.state.vehicle.x + this.state.vehicle.width / 2;
+      const centerY = this.state.vehicle.y + this.state.vehicle.height / 2;
+      const radius = 40;
+      const angleOffset = (now / 100) % (Math.PI * 2); // Rotate over time
+
+      for (let i = 0; i < 8; i++) {
+        const angle = (i * Math.PI * 2) / 8 + angleOffset;
+        this.state.bullets.push({
+          x: centerX + Math.cos(angle) * radius - 2,
+          y: centerY + Math.sin(angle) * radius - 5,
+          width: 4,
+          height: 10,
+          speed: 15,
+          active: true,
+        });
+      }
+    } else {
+      // Standard two-lane machine gun
+      const leftBullet: import('@/types/game').Bullet = {
+        x: this.state.vehicle.x + this.state.vehicle.width * 0.25 - 2,
+        y: this.state.vehicle.y - 10,
+        width: 4,
+        height: 10,
+        speed: 15,
+        active: true,
+      };
+      const rightBullet: import('@/types/game').Bullet = {
+        x: this.state.vehicle.x + this.state.vehicle.width * 0.75 - 2,
+        y: this.state.vehicle.y - 10,
+        width: 4,
+        height: 10,
+        speed: 15,
+        active: true,
+      };
+      this.state.bullets.push(leftBullet, rightBullet);
+    }
   }
 
   // Update bullets
@@ -653,6 +806,50 @@ export class GameEngine {
       bullet.y < obstacle.y + obstacle.height &&
       bullet.y + bullet.height > obstacle.y
     );
+  }
+
+  // Storm lightning effect handler
+  private lastStormLightning = 0;
+  private handleStormLightning(currentTime: number): void {
+    if (currentTime - this.lastStormLightning < 2000) return; // Every 2 seconds
+
+    this.lastStormLightning = currentTime;
+
+    // Clear all obstacles and award coins
+    const obstacleCount = this.state.obstacles.length;
+    this.state.obstacles = [];
+    this.state.destroyedObstacleCount += obstacleCount;
+
+    const coinReward = MACHINE_GUN_COIN_REWARD * obstacleCount;
+    this.state.coins += coinReward;
+    addCoins(coinReward);
+  }
+
+  // Trigger slot machine spin
+  triggerSlotMachine(): void {
+    if (this.state.slotMachine.isActive && !this.state.slotMachine.isSpinning) {
+      this.state.slotMachine = spinSlotMachine(this.state.slotMachine);
+      this.notifyStateChange();
+
+      // Simulate spin completion after delay
+      setTimeout(() => {
+        const reward = calculateSlotMachineReward(
+          this.state.slotMachine.results,
+          this.state.slotMachine.poolAmount
+        );
+
+        if (reward > 0) {
+          this.state.coins += reward;
+          addCoins(reward);
+        } else if (reward < 0) {
+          this.state.coins = Math.max(0, this.state.coins + reward);
+          spendCoins(-reward);
+        }
+
+        this.state.slotMachine = completeSlotMachineSpin(this.state.slotMachine);
+        this.notifyStateChange();
+      }, 2500); // Spin duration + delay
+    }
   }
 
   // Cleanup

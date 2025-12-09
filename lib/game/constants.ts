@@ -133,3 +133,60 @@ export const ROAD_COLORS = {
   line: '#fbbf24',
   grass: '#166534',
 };
+
+// Combo power-up configurations (合成道具)
+export const COMBO_POWERUP_CONFIG = {
+  rotating_shield_gun: {
+    name: '旋转弹幕射击',
+    icon: '🌀🔫',
+    description: '旋转的无敌护盾发射机枪子弹',
+    duration: 10000,
+    sourceTypes: ['invincibility', 'machine_gun'] as const,
+  },
+  quad_machine_gun: {
+    name: '四弹道机枪',
+    icon: '🔫🔫',
+    description: '射击弹幕从2弹道扩展为4弹道',
+    duration: 10000,
+    sourceTypes: ['score_multiplier', 'machine_gun'] as const,
+  },
+  storm_lightning: {
+    name: '风暴闪电',
+    icon: '⚡🌩️',
+    description: '每2秒全屏攻击清除所有障碍',
+    duration: 10000,
+    sourceTypes: ['machine_gun', 'nitro_boost'] as const,
+  },
+  double_heart: {
+    name: '双倍爱心',
+    icon: '❤❤',
+    description: '获得两个爱心补充两点耐久',
+    duration: 0,
+    sourceTypes: ['score_multiplier', 'heart'] as const,
+  },
+  double_coin: {
+    name: '双倍金币',
+    icon: '💰💰',
+    description: '金币面额两倍',
+    duration: 0,
+    sourceTypes: ['score_multiplier', 'coin'] as const,
+  },
+};
+
+// Slot machine configurations (老虎机)
+export const SLOT_MACHINE_CONFIG = {
+  symbols: ['❌', '谢谢', 100, 200, 500] as const,
+  multipliers: {
+    100: 1.5,
+    200: 2.0,
+    500: 3.0,
+  },
+  rewards: {
+    '谢谢': 10, // 三个谢谢奖励10金币
+  },
+  spinDuration: 2000, // 旋转持续时间(ms)
+  spinInterval: 500, // 每个滚轮停止间隔(ms)
+};
+
+// Machine gun coin reward
+export const MACHINE_GUN_COIN_REWARD = 10; // 每摧毁一辆障碍车辆奖励10金币

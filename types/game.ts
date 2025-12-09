@@ -49,6 +49,9 @@ export interface Obstacle extends Rectangle {
 // Power-up types
 export type PowerUpType = 'speed_boost' | 'invincibility' | 'magnet' | 'score_multiplier' | 'coin' | 'shop_invincibility' | 'machine_gun' | 'rocket_fuel' | 'nitro_boost' | 'heart';
 
+// Combo power-up types (合成道具)
+export type ComboPowerUpType = 'rotating_shield_gun' | 'quad_machine_gun' | 'storm_lightning' | 'double_heart' | 'double_coin';
+
 export interface PowerUp extends Rectangle {
   type: PowerUpType;
   duration: number;
@@ -88,6 +91,38 @@ export interface Bullet extends Rectangle {
   active: boolean;
 }
 
+// Combo power-up (合成道具)
+export interface ComboPowerUp {
+  type: ComboPowerUpType;
+  sourceTypes: PowerUpType[]; // 合成来源道具
+  duration: number;
+  icon: string;
+  description: string;
+}
+
+export interface ActiveComboPowerUp {
+  type: ComboPowerUpType;
+  remainingTime: number;
+  startTime: number;
+  totalDuration: number;
+}
+
+// Slot machine (老虎机)
+export type SlotMachineSymbol = '❌' | '谢谢' | 100 | 200 | 500;
+
+export interface SlotMachineCard {
+  value: number; // 金币值
+  filled: boolean; // 是否已填充
+}
+
+export interface SlotMachineState {
+  cards: SlotMachineCard[]; // 3张卡片
+  isActive: boolean; // 是否激活老虎机
+  isSpinning: boolean; // 是否正在旋转
+  results: SlotMachineSymbol[]; // 旋转结果
+  poolAmount: number; // 奖池金额
+}
+
 // Game state
 export type GameStatus = 'idle' | 'playing' | 'paused' | 'game_over';
 export type DifficultyLevel = 'easy' | 'medium' | 'hard';
@@ -103,6 +138,7 @@ export interface GameState {
   powerUps: PowerUp[];
   activePowerUps: ActivePowerUp[];
   activeShopPowerUps: ActiveShopPowerUp[];
+  activeComboPowerUps: ActiveComboPowerUp[];
   bullets: Bullet[];
   difficulty: number;
   difficultyLevel: DifficultyLevel;
@@ -111,6 +147,8 @@ export interface GameState {
   hearts: number;
   isRecovering: boolean;
   recoveryEndTime: number;
+  slotMachine: SlotMachineState;
+  destroyedObstacleCount: number; // 机枪摧毁的障碍车辆数量
 }
 
 // Input state
