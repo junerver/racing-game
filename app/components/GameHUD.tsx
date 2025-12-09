@@ -1,7 +1,7 @@
 'use client';
 
 import { GameState } from '@/types/game';
-import { POWERUP_CONFIG, DIFFICULTY } from '@/lib/game/constants';
+import { POWERUP_CONFIG, SHOP_POWERUP_CONFIG, DIFFICULTY } from '@/lib/game/constants';
 import { getDifficultyTier, getDifficultyColor } from '@/lib/game/difficulty';
 
 interface GameHUDProps {
@@ -39,7 +39,44 @@ export default function GameHUD({ gameState }: GameHUDProps) {
         <div className="mt-4 flex gap-2 justify-center">
           {gameState.activePowerUps.map((powerUp, index) => {
             const config = POWERUP_CONFIG[powerUp.type];
-            const progress = powerUp.remainingTime / config.duration;
+            const progress = powerUp.remainingTime / powerUp.totalDuration;
+
+            return (
+              <div
+                key={`${powerUp.type}-${index}`}
+                className="bg-black/70 rounded-lg px-3 py-2 flex items-center gap-2"
+              >
+                <span
+                  className="text-xl"
+                  style={{ filter: `drop-shadow(0 0 4px ${config.color})` }}
+                >
+                  {config.icon}
+                </span>
+                <div className="w-16 h-2 bg-gray-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full"
+                    style={{
+                      width: `${progress * 100}%`,
+                      backgroundColor: config.color,
+                      boxShadow: `0 0 8px ${config.color}`,
+                    }}
+                  />
+                </div>
+                <span className="text-xs text-gray-300">
+                  {Math.ceil(powerUp.remainingTime / 1000)}s
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Active Shop Power-ups */}
+      {gameState.activeShopPowerUps.length > 0 && (
+        <div className="mt-2 flex gap-2 justify-center">
+          {gameState.activeShopPowerUps.map((powerUp, index) => {
+            const config = POWERUP_CONFIG[powerUp.type];
+            const progress = powerUp.remainingTime / powerUp.totalDuration;
 
             return (
               <div

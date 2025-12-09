@@ -102,7 +102,7 @@ export const POWERUP_CONFIG = {
   shop_invincibility: { color: '#8b5cf6', icon: '🛡️', duration: 8000 },
   machine_gun: { color: '#ef4444', icon: '🔫', duration: 10000 },
   rocket_fuel: { color: '#f97316', icon: '🚀', duration: 6000 },
-  nitro_boost: { color: '#eab308', icon: '⚡', duration: 3000 },
+  nitro_boost: { color: '#06b6d4', icon: '⚡', duration: 3000 },
 };
 
 // Shop power-up configurations
@@ -121,7 +121,8 @@ export const FPS = 60;
 export const FRAME_TIME = 1000 / FPS;
 
 // Collision recovery
-export const COLLISION_RECOVERY_TIME = 1500; // ms of invincibility after collision
+export const COLLISION_RECOVERY_TIME = 2500; // ms of invincibility after collision
+export const COLLISION_RECOVERY_VISUAL_TIME = 1500; // ms of visual effect (flashing)
 export const COLLISION_KNOCKBACK = 30; // pixels to move vehicle back on collision
 
 // Road appearance

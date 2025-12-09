@@ -60,6 +60,7 @@ export interface ActivePowerUp {
   type: PowerUpType;
   remainingTime: number;
   startTime: number;
+  totalDuration: number;
 }
 
 // Shop power-up types (purchasable with coins)
@@ -78,6 +79,7 @@ export interface ActiveShopPowerUp {
   type: ShopPowerUpType;
   remainingTime: number;
   startTime: number;
+  totalDuration: number;
 }
 
 // Bullet for machine gun

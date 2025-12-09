@@ -7,6 +7,8 @@ import {
   ROAD_COLORS,
   POWERUP_CONFIG,
   SHOP_POWERUP_CONFIG,
+  COLLISION_RECOVERY_TIME,
+  COLLISION_RECOVERY_VISUAL_TIME,
   getLanePositions,
 } from '@/lib/game/constants';
 
@@ -112,8 +114,13 @@ export default function GameCanvas({ gameState }: GameCanvasProps) {
         ctx.fill();
 
         // Draw icon
-        ctx.fillStyle = 'white';
-        ctx.font = 'bold 16px sans-serif';
+        if (powerUp.type === 'coin') {
+          ctx.fillStyle = '#065f46';
+          ctx.font = 'bold 24px sans-serif';
+        } else {
+          ctx.fillStyle = 'white';
+          ctx.font = 'bold 16px sans-serif';
+        }
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(config.icon, centerX, centerY);
@@ -143,9 +150,11 @@ export default function GameCanvas({ gameState }: GameCanvasProps) {
       const isInvincible = gameState.activePowerUps.some(p => p.type === 'invincibility') ||
                            gameState.activeShopPowerUps.some(p => p.type === 'shop_invincibility');
       const isRecovering = gameState.isRecovering;
+      const remainingRecoveryTime = gameState.recoveryEndTime - performance.now();
+      const showRecoveryEffect = isRecovering && remainingRecoveryTime > (COLLISION_RECOVERY_TIME - COLLISION_RECOVERY_VISUAL_TIME);
 
       // Draw recovery shield (collision invincibility)
-      if (isRecovering) {
+      if (showRecoveryEffect) {
         const time = Date.now();
         const pulseScale = 1 + Math.sin(time / 100) * 0.1;
 
@@ -158,7 +167,7 @@ export default function GameCanvas({ gameState }: GameCanvasProps) {
         ctx.arc(
           vehicle.x + vehicle.width / 2,
           vehicle.y + vehicle.height / 2,
-          Math.max(vehicle.width, vehicle.height) / 2 + 12 * pulseScale,
+          Math.max(vehicle.width, vehicle.height) / 2 + 18 * pulseScale,
           0,
           Math.PI * 2
         );
@@ -179,8 +188,8 @@ export default function GameCanvas({ gameState }: GameCanvasProps) {
         // Rotating shield effect
         for (let i = 0; i < 6; i++) {
           const angle = rotation + (i * Math.PI / 3);
-          const x = vehicle.x + vehicle.width / 2 + Math.cos(angle) * 35;
-          const y = vehicle.y + vehicle.height / 2 + Math.sin(angle) * 35;
+          const x = vehicle.x + vehicle.width / 2 + Math.cos(angle) * 50;
+          const y = vehicle.y + vehicle.height / 2 + Math.sin(angle) * 50;
           ctx.beginPath();
           ctx.arc(x, y, 5, 0, Math.PI * 2);
           ctx.fill();
@@ -189,7 +198,7 @@ export default function GameCanvas({ gameState }: GameCanvasProps) {
       }
 
       // Flashing effect when recovering
-      const shouldDraw = !isRecovering || Math.floor(Date.now() / 100) % 2 === 0;
+      const shouldDraw = !showRecoveryEffect || Math.floor(Date.now() / 100) % 2 === 0;
       if (shouldDraw) {
         drawVehicle(ctx, vehicle.x, vehicle.y, vehicle.width, vehicle.height, vehicle.config.color, true);
       }

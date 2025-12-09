@@ -34,10 +34,12 @@ export const activatePowerUp = (
   currentTime: number,
   durationMultiplier: number = 1.0
 ): ActivePowerUp => {
+  const duration = powerUp.duration * durationMultiplier;
   return {
     type: powerUp.type,
-    remainingTime: powerUp.duration * durationMultiplier,
+    remainingTime: duration,
     startTime: currentTime,
+    totalDuration: duration,
   };
 };
 
@@ -128,10 +130,12 @@ export const activateShopPowerUp = (
   type: ShopPowerUpType,
   currentTime: number
 ): ActiveShopPowerUp => {
+  const duration = SHOP_POWERUP_CONFIG[type].duration;
   return {
     type,
-    remainingTime: SHOP_POWERUP_CONFIG[type].duration,
+    remainingTime: duration,
     startTime: currentTime,
+    totalDuration: duration,
   };
 };
 

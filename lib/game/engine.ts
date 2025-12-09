@@ -241,15 +241,31 @@ export class GameEngine {
 
     // Update speed based on distance (skip if recovering from collision)
     const difficultyMultiplier = DIFFICULTY_MULTIPLIERS[this.state.difficultyLevel];
+    const rocketFuelActive = isShopPowerUpActive(this.state.activeShopPowerUps, 'rocket_fuel');
+    const nitroBoostActive = isShopPowerUpActive(this.state.activeShopPowerUps, 'nitro_boost');
+
     if (!this.state.isRecovering) {
       const speedMultiplier = getSpeedMultiplier(this.state.activePowerUps);
-      this.state.currentSpeed = calculateGameSpeed(this.state.distance, this.state.maxSpeed) * speedMultiplier * difficultyMultiplier;
+      let targetSpeed = calculateGameSpeed(this.state.distance, this.state.maxSpeed) * speedMultiplier * difficultyMultiplier;
+
+      if (rocketFuelActive) {
+        targetSpeed = this.state.maxSpeed * 2 * difficultyMultiplier;
+      } else if (nitroBoostActive) {
+        targetSpeed = this.state.maxSpeed * difficultyMultiplier;
+      }
+
+      this.state.currentSpeed = targetSpeed;
     } else {
       // Gradually recover speed
-      this.state.currentSpeed = Math.min(
-        this.state.currentSpeed + this.state.vehicle.stats.acceleration,
-        calculateGameSpeed(this.state.distance, this.state.maxSpeed) * difficultyMultiplier
-      );
+      if (nitroBoostActive) {
+        this.state.currentSpeed = this.state.maxSpeed * difficultyMultiplier;
+      } else {
+        let targetSpeed = calculateGameSpeed(this.state.distance, this.state.maxSpeed) * difficultyMultiplier;
+        this.state.currentSpeed = Math.min(
+          this.state.currentSpeed + this.state.vehicle.stats.acceleration,
+          targetSpeed
+        );
+      }
     }
 
     // Update distance
@@ -293,8 +309,15 @@ export class GameEngine {
     // Update active power-ups timer
     this.state.activePowerUps = updateActivePowerUps(this.state.activePowerUps, deltaTime);
 
-    // Update active shop power-ups timer
+    // Update active shop power-ups timer and trigger recovery on expiration
+    const previousShopPowerUps = this.state.activeShopPowerUps;
     this.state.activeShopPowerUps = updateActiveShopPowerUps(this.state.activeShopPowerUps, deltaTime);
+
+    // Check if any shop power-ups expired and trigger recovery
+    if (previousShopPowerUps.length > this.state.activeShopPowerUps.length) {
+      this.state.isRecovering = true;
+      this.state.recoveryEndTime = currentTime + COLLISION_RECOVERY_TIME;
+    }
 
     // Update bullets
     this.updateBullets();
@@ -305,20 +328,12 @@ export class GameEngine {
     }
 
     // Check collisions
-    this.checkCollisions();
+    this.checkCollisions(currentTime);
 
     // Handle recovery from collision
-    if (this.state.isRecovering) {
-      const nitroActive = isShopPowerUpActive(this.state.activeShopPowerUps, 'nitro_boost');
-      if (nitroActive) {
-        this.state.currentSpeed = this.state.maxSpeed;
-        this.state.isRecovering = false;
-        this.state.recoveryEndTime = 0;
-      } else if (currentTime >= this.state.recoveryEndTime) {
-        // Recovery period ended, restore normal state
-        this.state.isRecovering = false;
-        this.state.recoveryEndTime = 0;
-      }
+    if (this.state.isRecovering && currentTime >= this.state.recoveryEndTime) {
+      this.state.isRecovering = false;
+      this.state.recoveryEndTime = 0;
     }
   }
 
@@ -443,7 +458,7 @@ export class GameEngine {
   }
 
   // Check all collisions
-  private checkCollisions(): void {
+  private checkCollisions(currentTime: number): void {
     if (!this.state.vehicle) return;
 
     // Check obstacle collisions
@@ -458,7 +473,7 @@ export class GameEngine {
 
           // Set recovery time (invincibility period)
           this.state.isRecovering = true;
-          this.state.recoveryEndTime = performance.now() + COLLISION_RECOVERY_TIME;
+          this.state.recoveryEndTime = currentTime + COLLISION_RECOVERY_TIME;
 
           // Knockback effect: move vehicle back
           this.state.vehicle.y = Math.min(
@@ -501,18 +516,28 @@ export class GameEngine {
           this.state.coins += coinValue;
           addCoins(coinValue);
         } else if (powerUp.type === 'shop_invincibility' || powerUp.type === 'machine_gun' || powerUp.type === 'rocket_fuel' || powerUp.type === 'nitro_boost') {
-          const activeShopPowerUp = activateShopPowerUp(powerUp.type, performance.now());
-          this.state.activeShopPowerUps = this.state.activeShopPowerUps.filter(
-            (p) => p.type !== powerUp.type
-          );
-          this.state.activeShopPowerUps.push(activeShopPowerUp);
+          const existingShopPowerUp = this.state.activeShopPowerUps.find((p) => p.type === powerUp.type);
+
+          if (existingShopPowerUp) {
+            const config = require('./constants').SHOP_POWERUP_CONFIG[powerUp.type];
+            existingShopPowerUp.remainingTime += config.duration;
+            existingShopPowerUp.totalDuration = existingShopPowerUp.remainingTime;
+          } else {
+            const activeShopPowerUp = activateShopPowerUp(powerUp.type, performance.now());
+            this.state.activeShopPowerUps.push(activeShopPowerUp);
+          }
         } else {
           const durationMultiplier = this.state.vehicle?.stats.powerUpDurationMultiplier ?? 1.0;
-          const activePowerUp = activatePowerUp(powerUp, performance.now(), durationMultiplier);
-          this.state.activePowerUps = this.state.activePowerUps.filter(
-            (p) => p.type !== powerUp.type
-          );
-          this.state.activePowerUps.push(activePowerUp);
+          const existingPowerUp = this.state.activePowerUps.find((p) => p.type === powerUp.type);
+
+          if (existingPowerUp) {
+            const additionalDuration = powerUp.duration * durationMultiplier;
+            existingPowerUp.remainingTime += additionalDuration;
+            existingPowerUp.totalDuration = existingPowerUp.remainingTime;
+          } else {
+            const activePowerUp = activatePowerUp(powerUp, performance.now(), durationMultiplier);
+            this.state.activePowerUps.push(activePowerUp);
+          }
         }
       }
     }
