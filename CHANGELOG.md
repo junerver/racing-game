@@ -2,7 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased] - 2024-12-08
+## [Unreleased] - 2024-12-09
+
+### Added
+
+- Heart power-up system for health recovery
+  - Appears when health ≤ 1, stops when health ≥ 3
+  - Restores 1 health point (max 3)
+  - Spawn rate adjusted by difficulty (Easy 80%, Medium 65%, Hard 50%)
+- Dynamic difficulty balancing for all power-ups
+  - Basic power-ups: Easy 120%, Medium 100%, Hard 80% spawn chance
+  - Shop power-ups: Easy 120%, Medium 100%, Hard 80% spawn chance
+- Coin denomination restrictions by difficulty
+  - Hard mode: Only 100 coins
+  - Medium mode: 100 and 200 coins
+  - Easy mode: 100, 200, and 500 coins
+
+### Improved
+
+- All power-ups now scale with difficulty level
+- Power-up spawn rates dynamically adjust based on game difficulty
+
+### Documentation
+
+- Added "Key File Paths" section to CLAUDE.md for quick file navigation
+- Updated README.md with dynamic balancing mechanics
+- Updated README.md with heart power-up documentation
+
+## [2024-12-08]
 
 ### Added
 

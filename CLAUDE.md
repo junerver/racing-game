@@ -31,21 +31,6 @@ npm start
 npm run lint
 ```
 
-## Project Structure
-
-```
-ai_demo/
-├── app/                    # Next.js App Router directory
-│   ├── layout.tsx         # Root layout with fonts and metadata
-│   ├── page.tsx           # Homepage (entry point)
-│   ├── globals.css        # Global styles with Tailwind directives
-│   └── favicon.ico        # Site favicon
-├── public/                # Static assets (images, SVGs)
-├── next.config.ts         # Next.js configuration
-├── tsconfig.json          # TypeScript configuration
-├── postcss.config.mjs     # PostCSS config for Tailwind
-└── eslint.config.mjs      # ESLint configuration
-```
 
 ## TypeScript Configuration
 
@@ -85,22 +70,23 @@ ai_demo/
 
 ### Power-ups & Items
 The game includes various collectible items with different effects:
-- **Speed Boost**: Temporary acceleration increase
-- **Invincibility**: Ignore collisions for a duration
-- **Flight Mode**: Ability to fly over obstacles
-- **Treasure Chests**: Contain random power-ups
 
-### Visual Assets Needed
-- Vehicle sprites (multiple designs)
-- Road/track textures
-- Obstacle vehicle sprites
-- Power-up icons and effects
-- UI elements (buttons, distance counter, etc.)
-- Particle effects for power-ups
+**Basic Power-ups** (spawn every 2 seconds):
+- **Speed Boost** (⚡): 1.5x speed multiplier for 8 seconds
+- **Invincibility** (🛡️): Ignore collisions for 8 seconds
+- **Magnet** (🧲): Attract all power-ups on screen for 8 seconds
+- **Score Multiplier** (2×): 2x score gain for 8 seconds
+- **Coins** ($): Instant currency (100/200/500 denominations based on difficulty)
 
-## Architecture Recommendations
+**Shop Power-ups** (spawn every 30 seconds, can be purchased with coins):
+- **Shop Invincibility** (🛡️): Ignore collisions for 8 seconds (500 coins)
+- **Machine Gun** (🔫): Dual bullet streams to destroy obstacles for 10 seconds (800 coins)
+- **Rocket Fuel** (🚀): 2x speed boost beyond max speed for 6 seconds (1000 coins)
+- **Nitro Boost** (⚡): Instant acceleration to max speed for 3 seconds (600 coins)
 
-### Suggested Directory Structure
+**Heart Power-up** (❤): Restores 1 health point (max 3), only spawns when health ≤ 1
+
+## Project Structure
 ```
 app/
 ├── page.tsx                    # Homepage with "Start Game" button
@@ -179,18 +165,29 @@ public/
 - Consider adding sound effects and background music
 - Implement local storage for high scores and vehicle unlocks
 
-## Next Steps for Implementation
+## Key File Paths
 
-1. Create game canvas component with basic rendering
-2. Implement vehicle movement with keyboard controls
-3. Add obstacle generation and scrolling
-4. Implement collision detection
-5. Build vehicle selection screen with stat system
-6. Add power-up system with effects
-7. Create UI/HUD for distance tracking
-8. Add visual polish (animations, particles, effects)
-9. Implement scoring and persistence
-10. Optimize performance and add mobile support
+### Core Game Logic
+- `lib/game/engine.ts` - 游戏引擎核心，管理游戏循环、状态更新、道具生成
+- `lib/game/constants.ts` - 游戏常量配置（速度、尺寸、道具配置等）
+- `lib/game/powerups.ts` - 道具系统（生成、激活、效果）
+- `lib/game/collision.ts` - 碰撞检测逻辑
+- `lib/game/difficulty.ts` - 难度系统和进度计算
+
+### Type Definitions
+- `types/game.ts` - 游戏实体类型定义（Vehicle, Obstacle, PowerUp等）
+
+### Game Pages & Components
+- `app/game/page.tsx` - 游戏主页面
+- `app/vehicle-select/page.tsx` - 车辆选择页面
+- `app/components/GameCanvas.tsx` - 游戏画布渲染
+- `app/components/GameHUD.tsx` - 游戏HUD显示（距离、分数、耐久度）
+- `app/components/ShopUI.tsx` - 商店道具UI
+- `app/components/GameStatus.tsx` - 游戏状态显示
+- `app/components/Leaderboard.tsx` - 排行榜组件
+
+### Utilities
+- `lib/utils/storage.ts` - 本地存储（高分、金币、排行榜）
 
 ## Documentation Guidelines
 
