@@ -201,6 +201,39 @@ export default function GameCanvas({ gameState }: GameCanvasProps) {
         drawVehicle(ctx, vehicle.x, vehicle.y, vehicle.width, vehicle.height, vehicle.config.color, true);
       }
     }
+
+    // Storm lightning effects
+    const hasStormLightning = gameState.activePowerUps.some(p => p.type === 'storm_lightning');
+    if (hasStormLightning) {
+      const timeSinceStrike = performance.now() - gameState.lastLightningStrike;
+
+      // White flash overlay during strike
+      if (timeSinceStrike < 100) {
+        const flashOpacity = 0.15 * (1 - timeSinceStrike / 100);
+        ctx.fillStyle = `rgba(255, 255, 255, ${flashOpacity})`;
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+      }
+
+      // Border glow effect
+      const isStriking = timeSinceStrike < 300;
+      if (isStriking) {
+        const flashIntensity = 1 - (timeSinceStrike / 300);
+        ctx.strokeStyle = `rgba(168, 85, 247, ${0.8 * flashIntensity})`;
+        ctx.lineWidth = 15;
+        ctx.shadowBlur = 30;
+        ctx.shadowColor = '#a855f7';
+        ctx.strokeRect(0, 0, canvasWidth, canvasHeight);
+        ctx.shadowBlur = 0;
+      } else {
+        const pulse = Math.sin(Date.now() / 200) * 0.3 + 0.4;
+        ctx.strokeStyle = `rgba(168, 85, 247, ${pulse})`;
+        ctx.lineWidth = 6;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#a855f7';
+        ctx.strokeRect(0, 0, canvasWidth, canvasHeight);
+        ctx.shadowBlur = 0;
+      }
+    }
   }, [gameState]);
 
   // Draw a vehicle (car shape)

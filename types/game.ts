@@ -134,6 +134,7 @@ export interface GameState {
   recoveryEndTime: number;
   slotMachine: SlotMachineState;
   destroyedObstacleCount: number;
+  lastLightningStrike: number;
 }
 
 // Input state

@@ -82,6 +82,7 @@ export class GameEngine {
       recoveryEndTime: 0,
       slotMachine: createSlotMachineState(),
       destroyedObstacleCount: 0,
+      lastLightningStrike: 0,
     };
   }
 
@@ -449,7 +450,7 @@ export class GameEngine {
   private spawnShopPowerUp(): void {
     const lanes = getLanePositions();
     const laneIndex = Math.floor(Math.random() * lanes.length);
-    const shopTypes: ('shop_invincibility' | 'machine_gun' | 'rocket_fuel' | 'nitro_boost')[] = ['shop_invincibility', 'machine_gun', 'rocket_fuel', 'nitro_boost'];
+    const shopTypes: ('invincibility' | 'machine_gun' | 'rocket_fuel' | 'nitro_boost')[] = ['invincibility', 'machine_gun', 'rocket_fuel', 'nitro_boost'];
     const type = shopTypes[Math.floor(Math.random() * shopTypes.length)];
 
     const powerUp: PowerUp = {
@@ -766,9 +767,10 @@ export class GameEngine {
   // Storm lightning effect handler
   private lastStormLightning = 0;
   private handleStormLightning(currentTime: number): void {
-    if (currentTime - this.lastStormLightning < 2000) return; // Every 2 seconds
+    if (currentTime - this.lastStormLightning < 1500) return; // Every 1.5 seconds
 
     this.lastStormLightning = currentTime;
+    this.state.lastLightningStrike = currentTime;
 
     // Clear all obstacles and award coins
     const obstacleCount = this.state.obstacles.length;
@@ -788,10 +790,17 @@ export class GameEngine {
 
       // Simulate spin completion after delay
       setTimeout(() => {
-        const reward = calculateSlotMachineReward(
+        let reward = calculateSlotMachineReward(
           this.state.slotMachine.results,
           this.state.slotMachine.poolAmount
         );
+
+        // Check for double coin power-up
+        const doubleCoinIndex = this.state.activePowerUps.findIndex(p => p.type === 'double_coin');
+        if (doubleCoinIndex !== -1 && reward > 0) {
+          reward *= 2;
+          this.state.activePowerUps.splice(doubleCoinIndex, 1);
+        }
 
         if (reward > 0) {
           this.state.coins += reward;
