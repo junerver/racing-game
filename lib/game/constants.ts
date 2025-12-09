@@ -103,6 +103,7 @@ export const POWERUP_CONFIG = {
   machine_gun: { color: '#ef4444', icon: '🔫', duration: 10000 },
   rocket_fuel: { color: '#f97316', icon: '🚀', duration: 6000 },
   nitro_boost: { color: '#06b6d4', icon: '⚡', duration: 3000 },
+  heart: { color: '#ef4444', icon: '❤', duration: 0 },
 };
 
 // Shop power-up configurations

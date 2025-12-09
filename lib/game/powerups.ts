@@ -4,7 +4,7 @@ import { PowerUp, PowerUpType, ActivePowerUp } from '@/types/game';
 import { GAME_CONFIG, POWERUP_SIZE, POWERUP_CONFIG, getLanePositions } from './constants';
 
 // Create a new power-up at a random lane (basic power-ups only)
-export const createPowerUp = (): PowerUp => {
+export const createPowerUp = (difficultyLevel: 'easy' | 'medium' | 'hard' = 'medium'): PowerUp => {
   const lanes = getLanePositions();
   const laneIndex = Math.floor(Math.random() * lanes.length);
   const types: PowerUpType[] = ['speed_boost', 'invincibility', 'magnet', 'score_multiplier', 'coin', 'coin', 'coin', 'coin', 'coin', 'coin'];
@@ -12,7 +12,11 @@ export const createPowerUp = (): PowerUp => {
 
   let value: number | undefined;
   if (type === 'coin') {
-    const coinValues = [100, 100, 100, 100, 100, 200, 200, 200, 500, 500];
+    const coinValues = difficultyLevel === 'hard'
+      ? [100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
+      : difficultyLevel === 'medium'
+      ? [100, 100, 100, 100, 100, 200, 200, 200, 200, 200]
+      : [100, 100, 100, 100, 100, 200, 200, 200, 500, 500];
     value = coinValues[Math.floor(Math.random() * coinValues.length)];
   }
 

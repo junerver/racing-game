@@ -47,7 +47,7 @@ export interface Obstacle extends Rectangle {
 }
 
 // Power-up types
-export type PowerUpType = 'speed_boost' | 'invincibility' | 'magnet' | 'score_multiplier' | 'coin' | 'shop_invincibility' | 'machine_gun' | 'rocket_fuel' | 'nitro_boost';
+export type PowerUpType = 'speed_boost' | 'invincibility' | 'magnet' | 'score_multiplier' | 'coin' | 'shop_invincibility' | 'machine_gun' | 'rocket_fuel' | 'nitro_boost' | 'heart';
 
 export interface PowerUp extends Rectangle {
   type: PowerUpType;

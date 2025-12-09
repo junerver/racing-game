@@ -53,6 +53,7 @@ export class GameEngine {
   private lastObstacleSpawn: number;
   private lastPowerUpSpawn: number;
   private lastShopPowerUpSpawn: number;
+  private lastHeartPowerUpSpawn: number;
   private animationFrameId: number | null;
   private lastFrameTime: number;
   private onStateChange: ((state: GameState) => void) | null;
@@ -63,6 +64,7 @@ export class GameEngine {
     this.lastObstacleSpawn = 0;
     this.lastPowerUpSpawn = 0;
     this.lastShopPowerUpSpawn = 0;
+    this.lastHeartPowerUpSpawn = 0;
     this.animationFrameId = null;
     this.lastFrameTime = 0;
     this.onStateChange = null;
@@ -151,6 +153,7 @@ export class GameEngine {
     this.lastObstacleSpawn = this.lastFrameTime;
     this.lastPowerUpSpawn = this.lastFrameTime;
     this.lastShopPowerUpSpawn = this.lastFrameTime;
+    this.lastHeartPowerUpSpawn = this.lastFrameTime;
 
     this.notifyStateChange();
     this.gameLoop();
@@ -290,14 +293,32 @@ export class GameEngine {
 
     // Spawn basic power-ups (every 2 seconds)
     if (currentTime - this.lastPowerUpSpawn > 2000) {
-      this.spawnPowerUp();
+      const difficultyMultiplier = DIFFICULTY_MULTIPLIERS[this.state.difficultyLevel];
+      const spawnChance = difficultyMultiplier === 0.7 ? 1.2 : difficultyMultiplier === 1.2 ? 0.8 : 1.0;
+      if (Math.random() < spawnChance) {
+        this.spawnPowerUp();
+      }
       this.lastPowerUpSpawn = currentTime;
     }
 
     // Spawn shop power-ups (every 30 seconds)
     if (currentTime - this.lastShopPowerUpSpawn > 30000) {
-      this.spawnShopPowerUp();
+      const difficultyMultiplier = DIFFICULTY_MULTIPLIERS[this.state.difficultyLevel];
+      const spawnChance = difficultyMultiplier === 0.7 ? 1.2 : difficultyMultiplier === 1.2 ? 0.8 : 1.0;
+      if (Math.random() < spawnChance) {
+        this.spawnShopPowerUp();
+      }
       this.lastShopPowerUpSpawn = currentTime;
+    }
+
+    // Spawn heart power-ups when hearts <= 1 and hearts < 3
+    if (this.state.hearts <= 1 && currentTime - this.lastHeartPowerUpSpawn > 30000) {
+      const difficultyMultiplier = DIFFICULTY_MULTIPLIERS[this.state.difficultyLevel];
+      const spawnChance = difficultyMultiplier === 0.7 ? 0.8 : difficultyMultiplier === 1.2 ? 0.5 : 0.65;
+      if (Math.random() < spawnChance) {
+        this.spawnHeartPowerUp();
+      }
+      this.lastHeartPowerUpSpawn = currentTime;
     }
 
     // Update obstacles
@@ -397,7 +418,7 @@ export class GameEngine {
 
   // Spawn basic power-up
   private spawnPowerUp(): void {
-    const powerUp = createPowerUp();
+    const powerUp = createPowerUp(this.state.difficultyLevel);
 
     // Check if position has safe distance from obstacles
     const hasSafeDistance = !this.state.obstacles.some(
@@ -427,6 +448,30 @@ export class GameEngine {
     };
 
     // Check if position has safe distance from obstacles
+    const hasSafeDistance = !this.state.obstacles.some(
+      (obs) => Math.abs(obs.y - powerUp.y) < 250 && Math.abs(obs.x - powerUp.x) < 60
+    );
+
+    if (hasSafeDistance) {
+      this.state.powerUps.push(powerUp);
+    }
+  }
+
+  // Spawn heart power-up
+  private spawnHeartPowerUp(): void {
+    const lanes = getLanePositions();
+    const laneIndex = Math.floor(Math.random() * lanes.length);
+
+    const powerUp: PowerUp = {
+      x: lanes[laneIndex] - POWERUP_SIZE / 2,
+      y: -POWERUP_SIZE,
+      width: POWERUP_SIZE,
+      height: POWERUP_SIZE,
+      type: 'heart',
+      duration: 0,
+      active: true,
+    };
+
     const hasSafeDistance = !this.state.obstacles.some(
       (obs) => Math.abs(obs.y - powerUp.y) < 250 && Math.abs(obs.x - powerUp.x) < 60
     );
@@ -515,6 +560,8 @@ export class GameEngine {
           const coinValue = powerUp.value || 100;
           this.state.coins += coinValue;
           addCoins(coinValue);
+        } else if (powerUp.type === 'heart') {
+          this.state.hearts = Math.min(this.state.hearts + 1, 3);
         } else if (powerUp.type === 'shop_invincibility' || powerUp.type === 'machine_gun' || powerUp.type === 'rocket_fuel' || powerUp.type === 'nitro_boost') {
           const existingShopPowerUp = this.state.activeShopPowerUps.find((p) => p.type === powerUp.type);
 
