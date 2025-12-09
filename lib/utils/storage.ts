@@ -13,6 +13,7 @@ const defaultGameSave: GameSave = {
   selectedVehicle: null,
   coins: 0,
   leaderboard: [],
+  slotMachineFailureCount: 0,
 };
 
 // Check if localStorage is available
@@ -152,4 +153,14 @@ export const addLeaderboardEntry = (entry: Omit<import('@/types/game').Leaderboa
 // Get leaderboard
 export const getLeaderboard = (): import('@/types/game').LeaderboardEntry[] => {
   return loadGameSave().leaderboard;
+};
+
+// Get slot machine failure count
+export const getSlotMachineFailureCount = (): number => {
+  return loadGameSave().slotMachineFailureCount;
+};
+
+// Save slot machine failure count
+export const saveSlotMachineFailureCount = (count: number): void => {
+  saveGameData({ slotMachineFailureCount: count });
 };

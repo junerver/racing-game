@@ -108,6 +108,7 @@ export interface SlotMachineState {
   isSpinning: boolean; // 是否正在旋转
   results: SlotMachineSymbol[]; // 旋转结果
   poolAmount: number; // 奖池金额
+  failureCount: number; // 失败次数（用于保底机制）
 }
 
 // Game state
@@ -181,4 +182,5 @@ export interface GameSave {
   selectedVehicle: SavedVehicle | null;
   coins: number;
   leaderboard: LeaderboardEntry[];
+  slotMachineFailureCount: number;
 }

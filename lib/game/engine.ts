@@ -33,7 +33,7 @@ import {
 } from './collision';
 import { calculateDifficulty, calculateGameSpeed, getObstacleCount } from './difficulty';
 import { createPowerUp, updatePowerUpPosition } from './powerups';
-import { getHighScore, getCoins, addCoins, spendCoins, addLeaderboardEntry } from '@/lib/utils/storage';
+import { getHighScore, getCoins, addCoins, spendCoins, addLeaderboardEntry, getSlotMachineFailureCount } from '@/lib/utils/storage';
 import { createSlotMachineState, addCoinToSlotMachine, spinSlotMachine, calculateSlotMachineReward, completeSlotMachineSpin } from './slotmachine';
 import { checkComboMatch, activateComboPowerUp, updateActivePowerUps, isPowerUpActive } from './combo';
 import { MACHINE_GUN_COIN_REWARD, POWERUP_CONFIG } from './constants';
@@ -62,6 +62,9 @@ export class GameEngine {
   }
 
   private createInitialState(): GameState {
+    const slotMachine = createSlotMachineState();
+    slotMachine.failureCount = getSlotMachineFailureCount();
+
     return {
       status: 'idle',
       distance: 0,
@@ -80,7 +83,7 @@ export class GameEngine {
       hearts: 3,
       isRecovering: false,
       recoveryEndTime: 0,
-      slotMachine: createSlotMachineState(),
+      slotMachine,
       destroyedObstacleCount: 0,
       lastLightningStrike: 0,
     };
@@ -129,6 +132,9 @@ export class GameEngine {
   start(): void {
     if (!this.state.vehicle) return;
 
+    const slotMachine = createSlotMachineState();
+    slotMachine.failureCount = getSlotMachineFailureCount();
+
     this.state.status = 'playing';
     this.state.distance = 0;
     this.state.score = 0;
@@ -141,7 +147,7 @@ export class GameEngine {
     this.state.hearts = 3;
     this.state.isRecovering = false;
     this.state.recoveryEndTime = 0;
-    this.state.slotMachine = createSlotMachineState();
+    this.state.slotMachine = slotMachine;
     this.state.destroyedObstacleCount = 0;
     this.lastFrameTime = performance.now();
     this.lastObstacleSpawn = this.lastFrameTime;
