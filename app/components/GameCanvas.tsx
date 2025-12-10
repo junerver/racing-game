@@ -150,6 +150,10 @@ export default function GameCanvas({ gameState }: GameCanvasProps) {
       const isRecovering = gameState.isRecovering;
       const remainingRecoveryTime = gameState.recoveryEndTime - performance.now();
       const showRecoveryEffect = isRecovering && remainingRecoveryTime > (COLLISION_RECOVERY_TIME - COLLISION_RECOVERY_VISUAL_TIME);
+      const hasTurboOverload = gameState.activePowerUps.some(p => p.type === 'turbo_overload');
+      const hasIronBody = gameState.activePowerUps.some(p => p.type === 'iron_body');
+      const hasGoldenBell = gameState.activePowerUps.some(p => p.type === 'golden_bell');
+      const hasInvincibleFireWheel = gameState.activePowerUps.some(p => p.type === 'invincible_fire_wheel');
 
       // Draw recovery shield (collision invincibility)
       if (showRecoveryEffect) {
@@ -195,11 +199,141 @@ export default function GameCanvas({ gameState }: GameCanvasProps) {
         ctx.shadowBlur = 0;
       }
 
+      // Draw iron body or invincible fire wheel (triangle shield)
+      if (hasIronBody || hasInvincibleFireWheel) {
+        const time = Date.now();
+        const rotation = (time / 800) % (Math.PI * 2);
+        const centerX = vehicle.x + vehicle.width / 2;
+        const centerY = vehicle.y + vehicle.height / 2;
+        const radius = 55;
+
+        ctx.strokeStyle = hasInvincibleFireWheel ? '#ef4444' : '#64748b';
+        ctx.lineWidth = 4;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = hasInvincibleFireWheel ? '#ef4444' : '#64748b';
+
+        ctx.beginPath();
+        for (let i = 0; i < 3; i++) {
+          const angle = rotation + (i * Math.PI * 2 / 3);
+          const x = centerX + Math.cos(angle) * radius;
+          const y = centerY + Math.sin(angle) * radius;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+
+      // Draw golden bell shield
+      if (hasGoldenBell) {
+        const time = Date.now();
+        const pulse = 1 + Math.sin(time / 150) * 0.15;
+
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 3;
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = '#fbbf24';
+        ctx.beginPath();
+        ctx.arc(
+          vehicle.x + vehicle.width / 2,
+          vehicle.y + vehicle.height / 2,
+          50 * pulse,
+          0,
+          Math.PI * 2
+        );
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+
+      // Draw turbo overload glow
+      if (hasTurboOverload) {
+        const time = Date.now();
+        const pulse = Math.sin(time / 100) * 0.3 + 0.7;
+
+        ctx.shadowBlur = 25;
+        ctx.shadowColor = '#ff6b35';
+        ctx.strokeStyle = `rgba(255, 107, 53, ${pulse})`;
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(
+          vehicle.x + vehicle.width / 2,
+          vehicle.y + vehicle.height / 2,
+          Math.max(vehicle.width, vehicle.height) / 2 + 20,
+          0,
+          Math.PI * 2
+        );
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+
       // Flashing effect when recovering
       const shouldDraw = !showRecoveryEffect || Math.floor(Date.now() / 100) % 2 === 0;
       if (shouldDraw) {
+        // Semi-transparent for turbo overload
+        if (hasTurboOverload) {
+          ctx.globalAlpha = 0.6;
+        }
         drawVehicle(ctx, vehicle.x, vehicle.y, vehicle.width, vehicle.height, vehicle.config.color, true);
+        ctx.globalAlpha = 1;
       }
+    }
+
+    // Death star beam effect
+    const hasDeathStarBeam = gameState.activePowerUps.some(p => p.type === 'death_star_beam');
+    if (hasDeathStarBeam && gameState.vehicle) {
+      const vehicle = gameState.vehicle;
+      const beamWidth = 60;
+      const time = Date.now();
+
+      // Main white beam
+      const gradient = ctx.createLinearGradient(
+        vehicle.x + vehicle.width / 2,
+        vehicle.y,
+        vehicle.x + vehicle.width / 2,
+        0
+      );
+      gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+      gradient.addColorStop(1, 'rgba(255, 255, 255, 0.3)');
+
+      ctx.fillStyle = gradient;
+      ctx.fillRect(
+        vehicle.x + vehicle.width / 2 - beamWidth / 2,
+        0,
+        beamWidth,
+        vehicle.y
+      );
+
+      // Purple lightning stripes
+      ctx.strokeStyle = '#8b5cf6';
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = '#8b5cf6';
+
+      for (let i = 0; i < 5; i++) {
+        const offset = (time / 50 + i * 100) % vehicle.y;
+        ctx.beginPath();
+        ctx.moveTo(vehicle.x + vehicle.width / 2 - beamWidth / 2, vehicle.y - offset);
+        ctx.lineTo(vehicle.x + vehicle.width / 2 + beamWidth / 2, vehicle.y - offset - 20);
+        ctx.stroke();
+      }
+      ctx.shadowBlur = 0;
+
+      // Purple glow on sides
+      const pulse = Math.sin(time / 100) * 0.3 + 0.5;
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = '#8b5cf6';
+      ctx.strokeStyle = `rgba(139, 92, 246, ${pulse})`;
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.moveTo(vehicle.x + vehicle.width / 2 - beamWidth / 2, 0);
+      ctx.lineTo(vehicle.x + vehicle.width / 2 - beamWidth / 2, vehicle.y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(vehicle.x + vehicle.width / 2 + beamWidth / 2, 0);
+      ctx.lineTo(vehicle.x + vehicle.width / 2 + beamWidth / 2, vehicle.y);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
     }
 
     // Storm lightning effects

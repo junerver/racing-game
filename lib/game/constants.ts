@@ -113,6 +113,11 @@ export const POWERUP_CONFIG: Record<PowerUpType, PowerUpConfig> = {
   storm_lightning: { name: '风暴闪电', icon: '⚡🌩️', color: '#a855f7', duration: 10000, description: '每2秒全屏攻击清除所有障碍', isCombo: true, comboSources: ['machine_gun', 'nitro_boost'] },
   double_heart: { name: '双倍爱心', icon: '❤❤', color: '#a855f7', duration: 0, description: '获得两个爱心补充两点耐久', isCombo: true, comboSources: ['score_multiplier', 'heart'] },
   double_coin: { name: '双倍金币', icon: '💰💰', color: '#a855f7', duration: 0, description: '金币面额两倍', isCombo: true, comboSources: ['score_multiplier', 'coin'] },
+  turbo_overload: { name: '涡轮过载', icon: '🚀⚡', color: '#ff6b35', duration: 10000, description: '3倍速度，半透明车身，无视碰撞', isCombo: true, comboSources: ['rocket_fuel', 'nitro_boost'] },
+  iron_body: { name: '钢铁之躯', icon: '🛡️🔺', color: '#64748b', duration: 10000, description: '三角光环包围，碰撞摧毁障碍奖励10金币', isCombo: true, comboSources: ['invincibility', 'invincibility'] },
+  golden_bell: { name: '金钟罩', icon: '🛡️💰', color: '#fbbf24', duration: 12000, description: '无碰撞则双倍返还金币面额', isCombo: true, comboSources: ['invincibility', 'coin'] },
+  death_star_beam: { name: '死星射击', icon: '🔫⚡', color: '#8b5cf6', duration: 10000, description: '白色射线柱摧毁障碍奖励10金币', isCombo: true, comboSources: ['machine_gun', 'machine_gun'] },
+  invincible_fire_wheel: { name: '无敌风火轮', icon: '🔥🛡️', color: '#ef4444', duration: 10000, description: '碰撞摧毁障碍并延长持续时间0.25秒', isCombo: true, comboSources: ['iron_body', 'invincibility'] },
 };
 
 // Coin value

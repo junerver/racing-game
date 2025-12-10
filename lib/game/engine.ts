@@ -86,6 +86,8 @@ export class GameEngine {
       slotMachine,
       destroyedObstacleCount: 0,
       lastLightningStrike: 0,
+      goldenBellCoinValue: 0,
+      goldenBellCollided: false,
     };
   }
 
@@ -247,12 +249,15 @@ export class GameEngine {
     const rocketFuelActive = isPowerUpActive(this.state.activePowerUps, 'rocket_fuel');
     const nitroBoostActive = isPowerUpActive(this.state.activePowerUps, 'nitro_boost');
     const speedBoostActive = isPowerUpActive(this.state.activePowerUps, 'speed_boost');
+    const turboOverloadActive = isPowerUpActive(this.state.activePowerUps, 'turbo_overload');
 
     if (!this.state.isRecovering) {
       const speedMultiplier = speedBoostActive ? 1.5 : 1;
       let targetSpeed = calculateGameSpeed(this.state.distance, this.state.maxSpeed) * speedMultiplier * difficultyMultiplier;
 
-      if (rocketFuelActive) {
+      if (turboOverloadActive) {
+        targetSpeed = this.state.maxSpeed * 3 * difficultyMultiplier;
+      } else if (rocketFuelActive) {
         targetSpeed = this.state.maxSpeed * 2 * difficultyMultiplier;
       } else if (nitroBoostActive) {
         targetSpeed = this.state.maxSpeed * difficultyMultiplier;
@@ -328,12 +333,26 @@ export class GameEngine {
     this.updatePowerUps();
 
     // Update active power-ups timer
-    const previousPowerUpsCount = this.state.activePowerUps.length;
+    const previousPowerUps = [...this.state.activePowerUps];
     this.state.activePowerUps = updateActivePowerUps(this.state.activePowerUps, deltaTime);
 
+    // Check if golden_bell expired without collision
+    const goldenBellExpired = previousPowerUps.some(p => p.type === 'golden_bell') &&
+      !this.state.activePowerUps.some(p => p.type === 'golden_bell');
+    if (goldenBellExpired && !this.state.goldenBellCollided && this.state.goldenBellCoinValue > 0) {
+      const reward = this.state.goldenBellCoinValue * 2;
+      this.state.coins += reward;
+      addCoins(reward);
+      this.state.goldenBellCoinValue = 0;
+    }
+    if (goldenBellExpired) {
+      this.state.goldenBellCollided = false;
+      this.state.goldenBellCoinValue = 0;
+    }
+
     // Trigger recovery when shop power-ups expire
-    if (previousPowerUpsCount > this.state.activePowerUps.length) {
-      const expiredShopPowerUp = previousPowerUpsCount > 0 &&
+    if (previousPowerUps.length > this.state.activePowerUps.length) {
+      const expiredShopPowerUp = previousPowerUps.length > 0 &&
         ['machine_gun', 'rocket_fuel', 'nitro_boost'].some(type =>
           !isPowerUpActive(this.state.activePowerUps, type as any)
         );
@@ -350,9 +369,15 @@ export class GameEngine {
     const hasQuadMachineGun = isPowerUpActive(this.state.activePowerUps, 'quad_machine_gun');
     const hasRotatingShieldGun = isPowerUpActive(this.state.activePowerUps, 'rotating_shield_gun');
     const hasMachineGun = isPowerUpActive(this.state.activePowerUps, 'machine_gun');
+    const hasDeathStarBeam = isPowerUpActive(this.state.activePowerUps, 'death_star_beam');
 
     if (hasMachineGun || hasQuadMachineGun || hasRotatingShieldGun) {
       this.spawnBullet(hasQuadMachineGun, hasRotatingShieldGun);
+    }
+
+    // Death star beam - continuous beam effect
+    if (hasDeathStarBeam && this.state.vehicle) {
+      this.handleDeathStarBeam();
     }
 
     // Storm lightning effect - clear all obstacles every 2 seconds
@@ -530,8 +555,13 @@ export class GameEngine {
 
     // Check obstacle collisions
     const invincible = isPowerUpActive(this.state.activePowerUps, 'invincibility') ||
-      isPowerUpActive(this.state.activePowerUps, 'rotating_shield_gun');
-    if (!invincible && !this.state.isRecovering) {
+      isPowerUpActive(this.state.activePowerUps, 'rotating_shield_gun') ||
+      isPowerUpActive(this.state.activePowerUps, 'turbo_overload') ||
+      isPowerUpActive(this.state.activePowerUps, 'golden_bell');
+    const ironBody = isPowerUpActive(this.state.activePowerUps, 'iron_body');
+    const invincibleFireWheel = isPowerUpActive(this.state.activePowerUps, 'invincible_fire_wheel');
+
+    if (!invincible && !ironBody && !invincibleFireWheel && !this.state.isRecovering) {
       for (let i = 0; i < this.state.obstacles.length; i++) {
         const obstacle = this.state.obstacles[i];
         if (checkVehicleObstacleCollision(this.state.vehicle, obstacle)) {
@@ -557,6 +587,34 @@ export class GameEngine {
             this.gameOver();
             return;
           }
+          break;
+        }
+      }
+    } else if ((ironBody || invincibleFireWheel) && !this.state.isRecovering) {
+      // Iron body or invincible fire wheel: destroy obstacles on collision
+      for (let i = this.state.obstacles.length - 1; i >= 0; i--) {
+        const obstacle = this.state.obstacles[i];
+        if (checkVehicleObstacleCollision(this.state.vehicle, obstacle)) {
+          this.state.obstacles.splice(i, 1);
+          this.state.destroyedObstacleCount++;
+          this.state.coins += MACHINE_GUN_COIN_REWARD;
+          addCoins(MACHINE_GUN_COIN_REWARD);
+
+          // Invincible fire wheel: extend duration by 0.25s
+          if (invincibleFireWheel) {
+            const fireWheelPowerUp = this.state.activePowerUps.find(p => p.type === 'invincible_fire_wheel');
+            if (fireWheelPowerUp) {
+              fireWheelPowerUp.remainingTime += 250;
+              fireWheelPowerUp.totalDuration += 250;
+            }
+          }
+        }
+      }
+    } else if (isPowerUpActive(this.state.activePowerUps, 'golden_bell') && !this.state.isRecovering) {
+      // Golden bell: mark collision
+      for (const obstacle of this.state.obstacles) {
+        if (checkVehicleObstacleCollision(this.state.vehicle, obstacle)) {
+          this.state.goldenBellCollided = true;
           break;
         }
       }
@@ -593,17 +651,24 @@ export class GameEngine {
           if (comboType === 'double_coin') {
             this.state.coins += coinValue * 2;
             addCoins(coinValue * 2);
-            this.state.activePowerUps.pop(); // Remove score_multiplier
+            this.state.activePowerUps.pop();
+          } else if (comboType === 'golden_bell') {
+            // Golden bell: consume coin, don't add to balance or slot machine
+            this.state.goldenBellCoinValue = coinValue;
+            this.state.goldenBellCollided = false;
+            this.state.activePowerUps.pop();
+            const activeComboPowerUp = activateComboPowerUp(comboType, performance.now());
+            this.state.activePowerUps.push(activeComboPowerUp);
           } else {
             this.state.coins += coinValue;
             addCoins(coinValue);
+            this.state.slotMachine = addCoinToSlotMachine(this.state.slotMachine, coinValue);
           }
-          this.state.slotMachine = addCoinToSlotMachine(this.state.slotMachine, coinValue);
         } else if (powerUp.type === 'heart') {
           const comboType = checkComboMatch(powerUp.type, this.state.activePowerUps);
           if (comboType === 'double_heart') {
             this.state.hearts = Math.min(this.state.hearts + 2, 3);
-            this.state.activePowerUps.pop(); // Remove last power-up
+            this.state.activePowerUps.pop();
           } else {
             this.state.hearts = Math.min(this.state.hearts + 1, 3);
           }
@@ -611,7 +676,7 @@ export class GameEngine {
           const comboType = checkComboMatch(powerUp.type, this.state.activePowerUps);
           if (comboType) {
             const activeComboPowerUp = activateComboPowerUp(comboType, performance.now());
-            this.state.activePowerUps.pop(); // Remove last power-up
+            this.state.activePowerUps.pop();
             this.state.activePowerUps.push(activeComboPowerUp);
           } else {
             const config = POWERUP_CONFIG[powerUp.type];
@@ -791,6 +856,22 @@ export class GameEngine {
     const coinReward = MACHINE_GUN_COIN_REWARD * obstacleCount;
     this.state.coins += coinReward;
     addCoins(coinReward);
+  }
+
+  // Death star beam handler
+  private handleDeathStarBeam(): void {
+    if (!this.state.vehicle) return;
+
+    // Destroy all obstacles in front of vehicle
+    for (let i = this.state.obstacles.length - 1; i >= 0; i--) {
+      const obstacle = this.state.obstacles[i];
+      if (obstacle.y < this.state.vehicle.y) {
+        this.state.obstacles.splice(i, 1);
+        this.state.destroyedObstacleCount++;
+        this.state.coins += MACHINE_GUN_COIN_REWARD;
+        addCoins(MACHINE_GUN_COIN_REWARD);
+      }
+    }
   }
 
   // Trigger slot machine spin
