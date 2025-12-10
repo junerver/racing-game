@@ -481,7 +481,16 @@ export class GameEngine {
   private spawnShopPowerUp(): void {
     const lanes = getLanePositions();
     const laneIndex = Math.floor(Math.random() * lanes.length);
-    const shopTypes: ('invincibility' | 'machine_gun' | 'rocket_fuel' | 'nitro_boost')[] = ['invincibility', 'machine_gun', 'rocket_fuel', 'nitro_boost'];
+
+    // Check if shield-based combo is active
+    const hasShieldCombo = this.state.activePowerUps.some(p =>
+      ['rotating_shield_gun', 'iron_body', 'golden_bell', 'invincible_fire_wheel'].includes(p.type)
+    );
+
+    const shopTypes: ('invincibility' | 'machine_gun' | 'rocket_fuel' | 'nitro_boost')[] =
+      hasShieldCombo
+        ? ['machine_gun', 'rocket_fuel', 'nitro_boost']
+        : ['invincibility', 'machine_gun', 'rocket_fuel', 'nitro_boost'];
     const type = shopTypes[Math.floor(Math.random() * shopTypes.length)];
 
     const powerUp: PowerUp = {
@@ -704,6 +713,14 @@ export class GameEngine {
   purchaseShopPowerUp(type: import('@/types/game').PowerUpType): boolean {
     const config = POWERUP_CONFIG[type];
     if (!config.isSellable || !config.price) return false;
+
+    // Prevent purchasing invincibility if shield-based combo is active
+    if (type === 'invincibility') {
+      const hasShieldCombo = this.state.activePowerUps.some(p =>
+        ['rotating_shield_gun', 'iron_body', 'golden_bell', 'invincible_fire_wheel'].includes(p.type)
+      );
+      if (hasShieldCombo) return false;
+    }
 
     if (spendCoins(config.price)) {
       this.state.coins = getCoins();
