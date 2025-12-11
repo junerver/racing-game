@@ -5,7 +5,7 @@ import { GameConfig, VehicleConfig, VehicleStats, PowerUpType, PowerUpConfig } f
 // Canvas and road configuration
 export const GAME_CONFIG: GameConfig = {
   canvasWidth: 400,
-  canvasHeight: 600,
+  canvasHeight: 800,
   laneCount: 3,
   laneWidth: 80,
   roadWidth: 280,
