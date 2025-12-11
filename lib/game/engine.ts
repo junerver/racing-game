@@ -48,6 +48,8 @@ export class GameEngine {
   private animationFrameId: number | null;
   private lastFrameTime: number;
   private onStateChange: ((state: GameState) => void) | null;
+  private accumulator: number;
+  private readonly fixedTimeStep: number = 16.67; // Fixed 60 FPS
 
   constructor() {
     this.state = this.createInitialState();
@@ -59,6 +61,7 @@ export class GameEngine {
     this.animationFrameId = null;
     this.lastFrameTime = 0;
     this.onStateChange = null;
+    this.accumulator = 0;
   }
 
   private createInitialState(): GameState {
@@ -156,6 +159,7 @@ export class GameEngine {
     this.lastPowerUpSpawn = this.lastFrameTime;
     this.lastShopPowerUpSpawn = this.lastFrameTime;
     this.lastHeartPowerUpSpawn = this.lastFrameTime;
+    this.accumulator = 0;
 
     this.notifyStateChange();
     this.gameLoop();
@@ -178,6 +182,7 @@ export class GameEngine {
     if (this.state.status === 'paused') {
       this.state.status = 'playing';
       this.lastFrameTime = performance.now();
+      this.accumulator = 0;
       this.notifyStateChange();
       this.gameLoop();
     }
@@ -226,23 +231,37 @@ export class GameEngine {
     return { ...this.state };
   }
 
-  // Main game loop
+  // Main game loop with fixed timestep
   private gameLoop = (): void => {
     if (this.state.status !== 'playing') return;
 
     const currentTime = performance.now();
-    const deltaTime = currentTime - this.lastFrameTime;
+    let deltaTime = currentTime - this.lastFrameTime;
     this.lastFrameTime = currentTime;
 
-    this.update(deltaTime, currentTime);
-    this.notifyStateChange();
+    // Clamp deltaTime to prevent spiral of death
+    if (deltaTime > 250) deltaTime = 250;
 
+    // Add to accumulator
+    this.accumulator += deltaTime;
+
+    // Update game logic at fixed timestep (60 FPS)
+    while (this.accumulator >= this.fixedTimeStep) {
+      this.update(this.fixedTimeStep, currentTime);
+      this.accumulator -= this.fixedTimeStep;
+    }
+
+    this.notifyStateChange();
     this.animationFrameId = requestAnimationFrame(this.gameLoop);
   };
 
   // Update game state
   private update(deltaTime: number, currentTime: number): void {
     if (!this.state.vehicle) return;
+
+    // Always use 1.0 as timeScale since we cap deltaTime at 16.67ms in gameLoop
+    // This effectively locks the game to 60 FPS speed regardless of display refresh rate
+    const timeScale = 1.0;
 
     // Update speed based on distance
     const difficultyMultiplier = DIFFICULTY_MULTIPLIERS[this.state.difficultyLevel];
@@ -268,7 +287,7 @@ export class GameEngine {
       if (nitroBoostActive) {
         this.state.currentSpeed = this.state.maxSpeed * difficultyMultiplier;
       } else {
-        let targetSpeed = calculateGameSpeed(this.state.distance, this.state.maxSpeed) * difficultyMultiplier;
+        const targetSpeed = calculateGameSpeed(this.state.distance, this.state.maxSpeed) * difficultyMultiplier;
         this.state.currentSpeed = Math.min(
           this.state.currentSpeed + this.state.vehicle.stats.acceleration,
           targetSpeed
@@ -276,12 +295,12 @@ export class GameEngine {
       }
     }
 
-    // Update distance
-    this.state.distance += this.state.currentSpeed;
+    // Update distance (scaled by time)
+    this.state.distance += this.state.currentSpeed * timeScale;
 
-    // Update score
+    // Update score (scaled by time)
     const scoreMultiplier = isPowerUpActive(this.state.activePowerUps, 'score_multiplier') ? 2 : 1;
-    this.state.score += Math.floor(this.state.currentSpeed * scoreMultiplier);
+    this.state.score += Math.floor(this.state.currentSpeed * scoreMultiplier * timeScale);
 
     // Update difficulty
     const difficulty = calculateDifficulty(this.state.distance);
@@ -327,10 +346,10 @@ export class GameEngine {
     }
 
     // Update obstacles
-    this.updateObstacles();
+    this.updateObstacles(timeScale);
 
     // Update power-ups
-    this.updatePowerUps();
+    this.updatePowerUps(timeScale);
 
     // Update active power-ups timer
     const previousPowerUps = [...this.state.activePowerUps];
@@ -353,8 +372,8 @@ export class GameEngine {
     // Trigger recovery when shop power-ups expire
     if (previousPowerUps.length > this.state.activePowerUps.length) {
       const expiredShopPowerUp = previousPowerUps.length > 0 &&
-        ['machine_gun', 'rocket_fuel', 'nitro_boost'].some(type =>
-          !isPowerUpActive(this.state.activePowerUps, type as any)
+        (['machine_gun', 'rocket_fuel', 'nitro_boost'] as const).some(type =>
+          !isPowerUpActive(this.state.activePowerUps, type)
         );
       if (expiredShopPowerUp) {
         this.state.isRecovering = true;
@@ -363,7 +382,7 @@ export class GameEngine {
     }
 
     // Update bullets
-    this.updateBullets();
+    this.updateBullets(timeScale);
 
     // Spawn bullets if machine gun or combo machine gun is active
     const hasQuadMachineGun = isPowerUpActive(this.state.activePowerUps, 'quad_machine_gun');
@@ -538,23 +557,23 @@ export class GameEngine {
   }
 
   // Update obstacle positions
-  private updateObstacles(): void {
+  private updateObstacles(timeScale: number): void {
     this.state.obstacles = this.state.obstacles
       .map((obstacle) => ({
         ...obstacle,
-        y: obstacle.y + this.state.currentSpeed - obstacle.speed,
+        y: obstacle.y + (this.state.currentSpeed - obstacle.speed) * timeScale,
       }))
       .filter((obstacle) => !isOffScreen(obstacle, GAME_CONFIG.canvasHeight));
   }
 
   // Update power-up positions
-  private updatePowerUps(): void {
+  private updatePowerUps(timeScale: number): void {
     const magnetActive = this.state.activePowerUps.some(p => p.type === 'magnet');
     const vehicleX = this.state.vehicle ? this.state.vehicle.x + this.state.vehicle.width / 2 : undefined;
     const vehicleY = this.state.vehicle ? this.state.vehicle.y + this.state.vehicle.height / 2 : undefined;
 
     this.state.powerUps = this.state.powerUps
-      .map((powerUp) => updatePowerUpPosition(powerUp, this.state.currentSpeed * 0.7, vehicleX, vehicleY, magnetActive))
+      .map((powerUp) => updatePowerUpPosition(powerUp, this.state.currentSpeed * 0.7 * timeScale, vehicleX, vehicleY, magnetActive))
       .filter((powerUp) => !isOffScreen(powerUp, GAME_CONFIG.canvasHeight) && powerUp.active);
   }
 
@@ -838,11 +857,11 @@ export class GameEngine {
   }
 
   // Update bullets
-  private updateBullets(): void {
+  private updateBullets(timeScale: number): void {
     this.state.bullets = this.state.bullets
       .map((bullet) => ({
         ...bullet,
-        y: bullet.y - bullet.speed,
+        y: bullet.y - bullet.speed * timeScale,
       }))
       .filter((bullet) => bullet.active && bullet.y > -bullet.height);
   }

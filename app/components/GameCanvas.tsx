@@ -104,8 +104,10 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
     ctx.fillRect(roadOffset - 5, 0, 5, canvasHeight);
     ctx.fillRect(roadOffset + roadWidth, 0, 5, canvasHeight);
 
-    // Draw moving lane lines
-    roadOffsetRef.current = (roadOffsetRef.current + gameState.currentSpeed) % 40;
+    // Draw moving lane lines - use a constant speed for visual consistency
+    // This keeps road animation speed constant regardless of game speed
+    const roadAnimationSpeed = 3; // Fixed speed matching initial game speed
+    roadOffsetRef.current = (roadOffsetRef.current + roadAnimationSpeed) % 40;
 
     const lanes = getLanePositions();
     ctx.setLineDash([20, 20]);
@@ -450,6 +452,7 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
 
   // Handle touch/click controls
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.preventDefault(); // Prevent default touch behavior
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -474,7 +477,8 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
       y >= centerAreaTop &&
       y <= centerAreaBottom
     ) {
-      // Trigger pause/resume
+      // Trigger pause/resume and stop event propagation
+      e.stopPropagation();
       onTouchCenter?.();
       return;
     }
@@ -496,7 +500,8 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
     }
   };
 
-  const handlePointerUp = () => {
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.preventDefault(); // Prevent default touch behavior
     onTouchLeft?.(false);
     onTouchRight?.(false);
   };

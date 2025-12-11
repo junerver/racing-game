@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { GameState } from '@/types/game';
 import { getGameEngine, resetGameEngine } from '@/lib/game/engine';
@@ -42,11 +42,22 @@ export default function GamePage() {
     engine.setInput({ right: pressed });
   }, []);
 
+  // Use ref to track last pause time to prevent rapid toggle
+  const lastPauseTimeRef = useRef(0);
+
   const handleTouchCenter = useCallback(() => {
+    const now = Date.now();
+    // Prevent rapid toggle - require at least 300ms between pause/resume
+    if (now - lastPauseTimeRef.current < 300) {
+      return;
+    }
+    lastPauseTimeRef.current = now;
+
     const engine = getGameEngine();
     const state = engine.getState();
     
-    // Toggle pause/resume when clicking center area
+    // Only toggle pause/resume during gameplay
+    // Prevent accidental triggers during other states
     if (state.status === 'playing') {
       engine.pause();
     } else if (state.status === 'paused') {
@@ -227,7 +238,10 @@ export default function GamePage() {
           )}
 
           {gameState.status === 'paused' && (
-            <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center rounded-lg">
+            <div
+              className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center rounded-lg"
+              onPointerDown={(e) => e.stopPropagation()}
+            >
               <h2 className="text-3xl font-bold text-white mb-6">Paused</h2>
               <button
                 onClick={handleResume}
