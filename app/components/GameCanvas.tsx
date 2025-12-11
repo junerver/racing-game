@@ -511,11 +511,11 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
       ref={canvasRef}
       width={GAME_CONFIG.canvasWidth}
       height={GAME_CONFIG.canvasHeight}
-      className="border-4 border-gray-700 rounded-lg shadow-2xl touch-none select-none"
+      className="border-0 md:border-4 border-gray-700 md:rounded-lg shadow-2xl touch-none select-none w-full h-full md:w-auto md:h-auto"
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}
-      style={{ touchAction: 'none' }}
+      style={{ touchAction: 'none', objectFit: 'contain' }}
     />
   );
 }

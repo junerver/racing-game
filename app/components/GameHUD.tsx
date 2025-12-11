@@ -45,11 +45,10 @@ export default function GameHUD({ gameState }: GameHUDProps) {
             return (
               <div
                 key={`${powerUp.type}-${index}`}
-                className={`rounded-lg px-3 py-2 flex items-center gap-2 ${
-                  isCombo
-                    ? 'bg-gradient-to-r from-purple-900/80 to-pink-900/80 border-2 border-purple-500/50'
-                    : 'bg-black/70'
-                }`}
+                className={`rounded-lg px-3 py-2 flex items-center gap-2 ${isCombo
+                  ? 'bg-gradient-to-r from-purple-900/80 to-pink-900/80 border-2 border-purple-500/50'
+                  : 'bg-black/70'
+                  }`}
               >
                 <span
                   className="text-xl"
@@ -87,3 +86,4 @@ export default function GameHUD({ gameState }: GameHUDProps) {
     </div>
   );
 }
+

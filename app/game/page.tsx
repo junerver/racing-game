@@ -55,7 +55,7 @@ export default function GamePage() {
 
     const engine = getGameEngine();
     const state = engine.getState();
-    
+
     // Only toggle pause/resume during gameplay
     // Prevent accidental triggers during other states
     if (state.status === 'playing') {
@@ -154,6 +154,16 @@ export default function GamePage() {
     engine.resume();
   }, []);
 
+  const handlePause = useCallback(() => {
+    const engine = getGameEngine();
+    engine.pause();
+  }, []);
+
+  const handleExit = useCallback(() => {
+    const engine = getGameEngine();
+    engine.pause();
+  }, []);
+
   if (!isInitialized || !gameState) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-900">
@@ -163,10 +173,10 @@ export default function GamePage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-gray-900 to-gray-800">
-      <div className="flex flex-col items-center gap-4">
-        {/* Game Container */}
-        <div className="relative">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-gray-900 to-gray-800 p-0 md:p-4">
+      <div className="flex flex-col items-center gap-0 md:gap-4 w-full md:w-auto">
+        {/* Game Container - Full screen on mobile */}
+        <div className="relative w-full h-screen md:w-auto md:h-auto">
           <GameCanvas
             gameState={gameState}
             onTouchLeft={handleTouchLeft}
@@ -242,14 +252,27 @@ export default function GamePage() {
               className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center rounded-lg"
               onPointerDown={(e) => e.stopPropagation()}
             >
-              <h2 className="text-3xl font-bold text-white mb-6">Paused</h2>
-              <button
-                onClick={handleResume}
-                className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white text-xl font-semibold rounded-lg transition-colors"
-              >
-                Resume
-              </button>
-              <p className="text-gray-400 text-sm mt-4">点击中心 或 按 ESC</p>
+              <h2 className="text-3xl font-bold text-white mb-6">已暂停</h2>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={handleResume}
+                  className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white text-xl font-semibold rounded-lg transition-colors"
+                >
+                  继续游戏
+                </button>
+                <button
+                  onClick={handleRestart}
+                  className="px-8 py-3 bg-green-600 hover:bg-green-700 text-white text-xl font-semibold rounded-lg transition-colors"
+                >
+                  重新开始
+                </button>
+                <Link
+                  href="/"
+                  className="px-8 py-3 bg-gray-600 hover:bg-gray-700 text-white text-xl font-semibold rounded-lg transition-colors text-center"
+                >
+                  返回菜单
+                </Link>
+              </div>
             </div>
           )}
 
@@ -285,8 +308,8 @@ export default function GamePage() {
           )}
         </div>
 
-        {/* Controls hint */}
-        <div className="flex gap-4 text-gray-400 text-sm flex-wrap justify-center">
+        {/* Controls hint - Only show on desktop */}
+        <div className="hidden md:flex gap-4 text-gray-400 text-sm flex-wrap justify-center">
           <span>← → / 点击左右 移动</span>
           <span>点击中心 / ESC 暂停</span>
           <span>SPACE 开始/重启</span>
@@ -294,10 +317,10 @@ export default function GamePage() {
           <span>1-4 购买道具</span>
         </div>
 
-        {/* Back to menu */}
+        {/* Back to menu - Only show on desktop */}
         <Link
           href="/"
-          className="text-gray-500 hover:text-gray-300 text-sm mt-2"
+          className="hidden md:block text-gray-500 hover:text-gray-300 text-sm mt-2"
         >
           ← Back to Menu
         </Link>
