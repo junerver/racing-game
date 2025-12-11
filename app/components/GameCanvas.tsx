@@ -13,11 +13,73 @@ import {
 
 interface GameCanvasProps {
   gameState: GameState;
+  onTouchLeft?: (pressed: boolean) => void;
+  onTouchRight?: (pressed: boolean) => void;
+  onTouchCenter?: () => void;
 }
 
-export default function GameCanvas({ gameState }: GameCanvasProps) {
+export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTouchCenter }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const roadOffsetRef = useRef(0);
+
+  // Draw a vehicle (car shape)
+  const drawVehicle = useCallback((
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    color: string,
+    isPlayer: boolean
+  ) => {
+    // Main body
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.roundRect(x, y + height * 0.15, width, height * 0.7, 5);
+    ctx.fill();
+
+    // Top (cabin)
+    ctx.fillStyle = isPlayer ? '#1e3a5f' : '#374151';
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.1, y + height * 0.25, width * 0.8, height * 0.35, 3);
+    ctx.fill();
+
+    // Windows
+    ctx.fillStyle = '#60a5fa';
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.15, y + height * 0.28, width * 0.7, height * 0.15, 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.15, y + height * 0.45, width * 0.7, height * 0.12, 2);
+    ctx.fill();
+
+    // Wheels
+    ctx.fillStyle = '#1f2937';
+    const wheelWidth = width * 0.2;
+    const wheelHeight = height * 0.15;
+    // Front wheels
+    ctx.fillRect(x - 3, y + height * 0.2, wheelWidth, wheelHeight);
+    ctx.fillRect(x + width - wheelWidth + 3, y + height * 0.2, wheelWidth, wheelHeight);
+    // Rear wheels
+    ctx.fillRect(x - 3, y + height * 0.65, wheelWidth, wheelHeight);
+    ctx.fillRect(x + width - wheelWidth + 3, y + height * 0.65, wheelWidth, wheelHeight);
+
+    // Headlights (only for player going up)
+    if (isPlayer) {
+      ctx.fillStyle = '#fef08a';
+      ctx.beginPath();
+      ctx.arc(x + width * 0.25, y + height * 0.1, 5, 0, Math.PI * 2);
+      ctx.arc(x + width * 0.75, y + height * 0.1, 5, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Taillights for obstacles
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.arc(x + width * 0.25, y + height * 0.9, 4, 0, Math.PI * 2);
+      ctx.arc(x + width * 0.75, y + height * 0.9, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }, []);
 
   // Draw the game
   const draw = useCallback(() => {
@@ -368,66 +430,7 @@ export default function GameCanvas({ gameState }: GameCanvasProps) {
         ctx.shadowBlur = 0;
       }
     }
-  }, [gameState]);
-
-  // Draw a vehicle (car shape)
-  const drawVehicle = (
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    color: string,
-    isPlayer: boolean
-  ) => {
-    // Main body
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.roundRect(x, y + height * 0.15, width, height * 0.7, 5);
-    ctx.fill();
-
-    // Top (cabin)
-    ctx.fillStyle = isPlayer ? '#1e3a5f' : '#374151';
-    ctx.beginPath();
-    ctx.roundRect(x + width * 0.1, y + height * 0.25, width * 0.8, height * 0.35, 3);
-    ctx.fill();
-
-    // Windows
-    ctx.fillStyle = '#60a5fa';
-    ctx.beginPath();
-    ctx.roundRect(x + width * 0.15, y + height * 0.28, width * 0.7, height * 0.15, 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.roundRect(x + width * 0.15, y + height * 0.45, width * 0.7, height * 0.12, 2);
-    ctx.fill();
-
-    // Wheels
-    ctx.fillStyle = '#1f2937';
-    const wheelWidth = width * 0.2;
-    const wheelHeight = height * 0.15;
-    // Front wheels
-    ctx.fillRect(x - 3, y + height * 0.2, wheelWidth, wheelHeight);
-    ctx.fillRect(x + width - wheelWidth + 3, y + height * 0.2, wheelWidth, wheelHeight);
-    // Rear wheels
-    ctx.fillRect(x - 3, y + height * 0.65, wheelWidth, wheelHeight);
-    ctx.fillRect(x + width - wheelWidth + 3, y + height * 0.65, wheelWidth, wheelHeight);
-
-    // Headlights (only for player going up)
-    if (isPlayer) {
-      ctx.fillStyle = '#fef08a';
-      ctx.beginPath();
-      ctx.arc(x + width * 0.25, y + height * 0.1, 5, 0, Math.PI * 2);
-      ctx.arc(x + width * 0.75, y + height * 0.1, 5, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      // Taillights for obstacles
-      ctx.fillStyle = '#ef4444';
-      ctx.beginPath();
-      ctx.arc(x + width * 0.25, y + height * 0.9, 4, 0, Math.PI * 2);
-      ctx.arc(x + width * 0.75, y + height * 0.9, 4, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  };
+  }, [gameState, drawVehicle]);
 
   // Animation loop for rendering
   useEffect(() => {
@@ -445,12 +448,69 @@ export default function GameCanvas({ gameState }: GameCanvasProps) {
     };
   }, [draw]);
 
+  // Handle touch/click controls
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const centerX = GAME_CONFIG.canvasWidth / 2;
+    const centerY = GAME_CONFIG.canvasHeight / 2;
+
+    // Define center pause area (类似汉字"回"的中心"口"区域)
+    // 中心区域：宽度60px，高度60px
+    const centerAreaSize = 60;
+    const centerAreaLeft = centerX - centerAreaSize / 2;
+    const centerAreaRight = centerX + centerAreaSize / 2;
+    const centerAreaTop = centerY - centerAreaSize / 2;
+    const centerAreaBottom = centerY + centerAreaSize / 2;
+
+    // Check if click is in center pause area
+    if (
+      x >= centerAreaLeft &&
+      x <= centerAreaRight &&
+      y >= centerAreaTop &&
+      y <= centerAreaBottom
+    ) {
+      // Trigger pause/resume
+      onTouchCenter?.();
+      return;
+    }
+
+    // Define outer boundary (类似汉字"回"的外框)
+    // 外框区域：距离中心区域各留出20px的空白
+    const outerBoundary = centerAreaSize / 2 + 20;
+    const isInOuterArea =
+      Math.abs(x - centerX) > outerBoundary ||
+      Math.abs(y - centerY) > outerBoundary;
+
+    // Only trigger left/right controls outside the "回" shape
+    if (isInOuterArea) {
+      if (x < centerX) {
+        onTouchLeft?.(true);
+      } else {
+        onTouchRight?.(true);
+      }
+    }
+  };
+
+  const handlePointerUp = () => {
+    onTouchLeft?.(false);
+    onTouchRight?.(false);
+  };
+
   return (
     <canvas
       ref={canvasRef}
       width={GAME_CONFIG.canvasWidth}
       height={GAME_CONFIG.canvasHeight}
-      className="border-4 border-gray-700 rounded-lg shadow-2xl"
+      className="border-4 border-gray-700 rounded-lg shadow-2xl touch-none select-none"
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={handlePointerUp}
+      style={{ touchAction: 'none' }}
     />
   );
 }

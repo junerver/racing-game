@@ -31,6 +31,29 @@ export default function GamePage() {
     };
   }, []);
 
+  // Handle touch/click controls
+  const handleTouchLeft = useCallback((pressed: boolean) => {
+    const engine = getGameEngine();
+    engine.setInput({ left: pressed });
+  }, []);
+
+  const handleTouchRight = useCallback((pressed: boolean) => {
+    const engine = getGameEngine();
+    engine.setInput({ right: pressed });
+  }, []);
+
+  const handleTouchCenter = useCallback(() => {
+    const engine = getGameEngine();
+    const state = engine.getState();
+    
+    // Toggle pause/resume when clicking center area
+    if (state.status === 'playing') {
+      engine.pause();
+    } else if (state.status === 'paused') {
+      engine.resume();
+    }
+  }, []);
+
   // Handle keyboard input
   useEffect(() => {
     const engine = getGameEngine();
@@ -133,7 +156,12 @@ export default function GamePage() {
       <div className="flex flex-col items-center gap-4">
         {/* Game Container */}
         <div className="relative">
-          <GameCanvas gameState={gameState} />
+          <GameCanvas
+            gameState={gameState}
+            onTouchLeft={handleTouchLeft}
+            onTouchRight={handleTouchRight}
+            onTouchCenter={handleTouchCenter}
+          />
           <GameHUD gameState={gameState} />
           {gameState.status === 'playing' && (
             <>
@@ -152,9 +180,10 @@ export default function GamePage() {
           {gameState.status === 'idle' && !showDifficultySelect && (
             <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center rounded-lg">
               <h2 className="text-3xl font-bold text-white mb-4">Ready to Race?</h2>
-              <p className="text-gray-300 mb-6">
-                Use ← → to move | ESC to pause
-              </p>
+              <div className="text-gray-300 mb-6 text-center">
+                <p className="mb-2">使用方向键 或 点击屏幕左右侧 来移动</p>
+                <p>点击中心暂停 | ESC 暂停</p>
+              </div>
               <button
                 onClick={handleStart}
                 className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white text-xl font-semibold rounded-lg transition-colors"
@@ -206,7 +235,7 @@ export default function GamePage() {
               >
                 Resume
               </button>
-              <p className="text-gray-400 text-sm mt-4">or press ESC</p>
+              <p className="text-gray-400 text-sm mt-4">点击中心 或 按 ESC</p>
             </div>
           )}
 
@@ -243,11 +272,12 @@ export default function GamePage() {
         </div>
 
         {/* Controls hint */}
-        <div className="flex gap-8 text-gray-400 text-sm">
-          <span>← → Move</span>
-          <span>ESC Pause</span>
-          <span>SPACE Start/Restart</span>
-          <span>S Slot Machine</span>
+        <div className="flex gap-4 text-gray-400 text-sm flex-wrap justify-center">
+          <span>← → / 点击左右 移动</span>
+          <span>点击中心 / ESC 暂停</span>
+          <span>SPACE 开始/重启</span>
+          <span>S 老虎机</span>
+          <span>1-4 购买道具</span>
         </div>
 
         {/* Back to menu */}

@@ -29,17 +29,19 @@ export default function ShopUI({ gameState, onPurchase }: ShopUIProps) {
           return (
             <button
               key={type}
-              onClick={() => onPurchase(type)}
+              onClick={(e) => {
+                e.stopPropagation(); // 防止事件冒泡到画布
+                onPurchase(type);
+              }}
               disabled={isActive || !canAfford || isShieldBlocked}
-              className={`px-2 py-1 rounded text-xs font-bold transition-all ${
-                isActive
+              className={`px-2 py-1 rounded text-xs font-bold transition-all touch-manipulation ${isActive
                   ? 'bg-green-500 text-white cursor-not-allowed'
                   : isShieldBlocked
-                  ? 'bg-red-400 text-gray-200 cursor-not-allowed'
-                  : canAfford
-                  ? 'bg-blue-500 text-white hover:bg-blue-600'
-                  : 'bg-gray-400 text-gray-200 cursor-not-allowed'
-              }`}
+                    ? 'bg-red-400 text-gray-200 cursor-not-allowed'
+                    : canAfford
+                      ? 'bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700'
+                      : 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                }`}
               title={isShieldBlocked ? '护盾合成道具激活中，无法购买' : config.description}
             >
               <div className="flex items-center gap-1">
