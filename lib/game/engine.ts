@@ -1004,7 +1004,7 @@ export class GameEngine {
 
     // Update boss position (horizontal movement)
     this.state.bossBattle.boss = updateBossPosition(this.state.bossBattle.boss);
-    
+
     const boss = this.state.bossBattle.boss;
     this.state.bossBattle.elapsedTime = currentTime - this.state.bossBattle.startTime;
 
@@ -1028,7 +1028,8 @@ export class GameEngine {
       if (!bullet.active) continue;
       if (this.checkBulletBossCollision(bullet, this.state.bossBattle.boss)) {
         bullet.active = false;
-        this.state.bossBattle.boss = damageBoss(this.state.bossBattle.boss, 10);
+        // Damage based on weapon type (machine gun does 5 damage per bullet)
+        this.state.bossBattle.boss = damageBoss(this.state.bossBattle.boss, 5);
       }
     }
 
@@ -1097,10 +1098,50 @@ export class GameEngine {
 
       // Heal one heart
       this.state.hearts = Math.min(this.state.hearts + 1, 3);
+
+      // Spawn reward power-up wave
+      this.spawnBossRewardWave();
     }
 
     // Reset boss battle state
     this.state.bossBattle = createBossBattleState();
+  }
+
+  // Spawn power-up wave as boss battle reward
+  private spawnBossRewardWave(): void {
+    const lanes = getLanePositions();
+    const rewardTypes: PowerUpType[] = [
+      'heart',
+      'machine_gun',
+      'invincibility',
+      'score_multiplier',
+      'speed_boost',
+      'magnet',
+      'coin',
+      'coin',
+    ];
+
+    // Spawn 6-8 power-ups in a wave pattern
+    const waveCount = 6 + Math.floor(Math.random() * 3);
+
+    for (let i = 0; i < waveCount; i++) {
+      const laneIndex = i % lanes.length;
+      const type = rewardTypes[i % rewardTypes.length];
+      const yOffset = -100 - (i * 80); // Staggered spawn
+
+      const powerUp: PowerUp = {
+        x: lanes[laneIndex] - POWERUP_SIZE / 2,
+        y: yOffset,
+        width: POWERUP_SIZE,
+        height: POWERUP_SIZE,
+        type,
+        duration: POWERUP_CONFIG[type].duration,
+        active: true,
+        value: type === 'coin' ? 300 : undefined, // Bonus coin value
+      };
+
+      this.state.powerUps.push(powerUp);
+    }
   }
 
   // Spawn power-up during boss battle
