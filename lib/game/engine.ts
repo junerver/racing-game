@@ -72,7 +72,7 @@ export class GameEngine {
 
   constructor() {
     this.state = this.createInitialState();
-    this.inputState = { left: false, right: false };
+    this.inputState = { left: false, right: false, targetX: undefined, isDragging: false };
     this.lastObstacleSpawn = 0;
     this.lastPowerUpSpawn = 0;
     this.lastShopPowerUpSpawn = 0;
@@ -487,11 +487,34 @@ export class GameEngine {
     // 高等级轮胎会有"过度转向"效果
     const effectiveHandling = handling / stability;
 
-    if (this.inputState.left) {
-      this.state.vehicle.x = Math.max(minX, this.state.vehicle.x - effectiveHandling);
-    }
-    if (this.inputState.right) {
-      this.state.vehicle.x = Math.min(maxX, this.state.vehicle.x + effectiveHandling);
+    // 优先使用拖动跟随模式
+    if (this.inputState.isDragging && this.inputState.targetX !== undefined) {
+      // 拖动跟随：车辆平滑移动到目标位置
+      // 目标位置是触摸点的 x 坐标，需要转换为车辆中心
+      const targetVehicleX = this.inputState.targetX - VEHICLE_WIDTH / 2;
+      const currentX = this.state.vehicle.x;
+      const deltaX = targetVehicleX - currentX;
+      
+      // 使用车辆的 handling 属性限制移动速度
+      // 这样车辆不会瞬移，而是以受限的速度跟随
+      const maxMoveDistance = effectiveHandling;
+      
+      if (Math.abs(deltaX) > 0.5) {
+        // 计算移动方向和距离
+        const moveDistance = Math.min(Math.abs(deltaX), maxMoveDistance);
+        const direction = deltaX > 0 ? 1 : -1;
+        
+        // 应用移动
+        this.state.vehicle.x = Math.max(minX, Math.min(maxX, currentX + direction * moveDistance));
+      }
+    } else {
+      // 传统的左右按键控制（桌面端或备用）
+      if (this.inputState.left) {
+        this.state.vehicle.x = Math.max(minX, this.state.vehicle.x - effectiveHandling);
+      }
+      if (this.inputState.right) {
+        this.state.vehicle.x = Math.min(maxX, this.state.vehicle.x + effectiveHandling);
+      }
     }
   }
 

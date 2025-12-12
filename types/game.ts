@@ -149,6 +149,8 @@ export interface GameState {
 export interface InputState {
   left: boolean;
   right: boolean;
+  targetX?: number; // 目标 x 位置（用于拖动跟随）
+  isDragging?: boolean; // 是否正在拖动
 }
 
 // Game configuration

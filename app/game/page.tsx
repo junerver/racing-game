@@ -44,6 +44,12 @@ export default function GamePage() {
     engine.setInput({ right: pressed });
   }, []);
 
+  // Handle drag controls (mobile touch follow)
+  const handleDrag = useCallback((targetX: number | undefined, isDragging: boolean) => {
+    const engine = getGameEngine();
+    engine.setInput({ targetX, isDragging });
+  }, []);
+
   // Use ref to track last pause time to prevent rapid toggle
   const lastPauseTimeRef = useRef(0);
 
@@ -184,6 +190,7 @@ export default function GamePage() {
             onTouchLeft={handleTouchLeft}
             onTouchRight={handleTouchRight}
             onTouchCenter={handleTouchCenter}
+            onDrag={handleDrag}
           />
           <GameHUD gameState={gameState} />
           {gameState.status === 'playing' && (
@@ -204,7 +211,7 @@ export default function GamePage() {
             <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center rounded-lg">
               <h2 className="text-3xl font-bold text-white mb-4">Ready to Race?</h2>
               <div className="text-gray-300 mb-6 text-center">
-                <p className="mb-2">使用方向键 或 点击屏幕左右侧 来移动</p>
+                <p className="mb-2">使用方向键 或 拖动屏幕 来移动</p>
                 <p>点击中心暂停 | ESC 暂停</p>
               </div>
               <button
@@ -328,7 +335,7 @@ export default function GamePage() {
 
         {/* Controls hint - Only show on desktop */}
         <div className="hidden md:flex gap-4 text-gray-400 text-sm flex-wrap justify-center">
-          <span>← → / 点击左右 移动</span>
+          <span>← → / 拖动 移动</span>
           <span>点击中心 / ESC 暂停</span>
           <span>SPACE 开始/重启</span>
           <span>S 老虎机</span>
