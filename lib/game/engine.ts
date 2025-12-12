@@ -997,7 +997,7 @@ export class GameEngine {
     const bossNumber = getBossNumber(this.state.distance);
     this.state.statistics.bossRecords.push({
       bossNumber,
-      distance: Math.floor(this.state.distance / 100),
+      distance: Math.floor(this.state.distance / 1000),
       defeated: false,
       elapsedTime: 0,
       powerUpsUsed: [],

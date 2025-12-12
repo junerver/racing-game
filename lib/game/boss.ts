@@ -84,7 +84,7 @@ export const shouldTriggerBossBattle = (distance: number): boolean => {
 
 // 获取Boss编号（第几个Boss）- 从1开始
 export const getBossNumber = (distance: number): number => {
-    return Math.floor(distance / BOSS_CONFIG.spawnInterval) + 1;
+    return Math.floor(distance / BOSS_CONFIG.spawnInterval);
 };
 
 // 创建Boss
@@ -93,7 +93,7 @@ export const createBoss = (distance: number): Boss => {
     const maxHealth = BOSS_CONFIG.baseHealth + (bossNumber - 1) * BOSS_CONFIG.healthIncrement;
     const colorIndex = (bossNumber - 1) % BOSS_CONFIG.colors.length;
     const nameIndex = (bossNumber - 1) % BOSS_CONFIG.names.length;
-    
+
     // 随机选择Boss形态
     const shapes: import('@/types/game').BossShape[] = ['diamond', 'hexagon', 'star', 'triangle', 'cross'];
     const shape = shapes[Math.floor(Math.random() * shapes.length)];
