@@ -123,6 +123,121 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
     }
     ctx.setLineDash([]);
 
+    // Draw Boss (if boss battle is active)
+    if (gameState.bossBattle.active && gameState.bossBattle.boss) {
+      const boss = gameState.bossBattle.boss;
+
+      // Draw boss vehicle (larger cyberpunk-style car)
+      const bossGradient = ctx.createLinearGradient(boss.x, boss.y, boss.x, boss.y + boss.height);
+      bossGradient.addColorStop(0, boss.color);
+      bossGradient.addColorStop(1, '#000000');
+
+      // Main boss body with glow
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = boss.color;
+      ctx.fillStyle = bossGradient;
+      ctx.beginPath();
+      ctx.roundRect(boss.x, boss.y, boss.width, boss.height, 8);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Boss details - cyberpunk accents
+      ctx.strokeStyle = '#00f5ff';
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = '#00f5ff';
+      ctx.beginPath();
+      ctx.roundRect(boss.x + 5, boss.y + 5, boss.width - 10, boss.height - 10, 5);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Boss name tag
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.fillRect(boss.x, boss.y - 30, boss.width, 25);
+      ctx.fillStyle = boss.color;
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(boss.name, boss.x + boss.width / 2, boss.y - 17);
+
+      // Boss health bar
+      const healthBarWidth = boss.width;
+      const healthBarHeight = 8;
+      const healthPercent = boss.health / boss.maxHealth;
+
+      // Health bar background
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.fillRect(boss.x, boss.y - 8, healthBarWidth, healthBarHeight);
+
+      // Health bar fill (color changes based on health)
+      let healthColor = '#10b981'; // Green
+      if (healthPercent < 0.5) healthColor = '#f59e0b'; // Orange
+      if (healthPercent < 0.2) healthColor = '#ef4444'; // Red
+
+      ctx.fillStyle = healthColor;
+      ctx.fillRect(boss.x, boss.y - 8, healthBarWidth * healthPercent, healthBarHeight);
+
+      // Health bar border
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(boss.x, boss.y - 8, healthBarWidth, healthBarHeight);
+    }
+
+    // Draw boss attacks
+    if (gameState.bossBattle.active) {
+      for (const attack of gameState.bossBattle.attacks) {
+        if (!attack.active) continue;
+
+        if (attack.type === 'bullet') {
+          // Boss bullet (different color from player)
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = '#ff006e';
+          ctx.fillStyle = '#ff006e';
+          ctx.fillRect(attack.x - 2, attack.y, attack.width + 4, attack.height);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(attack.x, attack.y, attack.width, attack.height);
+          ctx.shadowBlur = 0;
+        } else if (attack.type === 'laser') {
+          // Laser beam
+          const gradient = ctx.createLinearGradient(attack.x, attack.y, attack.x + attack.width, attack.y);
+          gradient.addColorStop(0, 'rgba(255, 0, 110, 0.3)');
+          gradient.addColorStop(0.5, 'rgba(255, 0, 110, 0.8)');
+          gradient.addColorStop(1, 'rgba(255, 0, 110, 0.3)');
+
+          ctx.fillStyle = gradient;
+          ctx.fillRect(attack.x, attack.y, attack.width, attack.height);
+
+          // Laser edges
+          ctx.strokeStyle = '#ff006e';
+          ctx.lineWidth = 2;
+          ctx.shadowBlur = 15;
+          ctx.shadowColor = '#ff006e';
+          ctx.strokeRect(attack.x, attack.y, attack.width, attack.height);
+          ctx.shadowBlur = 0;
+        } else if (attack.type === 'obstacle') {
+          // Thrown obstacle
+          ctx.shadowBlur = 15;
+          ctx.shadowColor = '#8338ec';
+          ctx.fillStyle = '#8338ec';
+          ctx.beginPath();
+          ctx.roundRect(attack.x, attack.y, attack.width, attack.height, 5);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+
+          // Warning stripes
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 2;
+          for (let i = 0; i < 3; i++) {
+            const y = attack.y + (i + 1) * (attack.height / 4);
+            ctx.beginPath();
+            ctx.moveTo(attack.x, y);
+            ctx.lineTo(attack.x + attack.width, y);
+            ctx.stroke();
+          }
+        }
+      }
+    }
+
     // Draw obstacles
     for (const obstacle of gameState.obstacles) {
       drawVehicle(ctx, obstacle.x, obstacle.y, obstacle.width, obstacle.height, obstacle.color, false);

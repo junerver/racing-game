@@ -10,7 +10,7 @@ export interface Dimensions {
   height: number;
 }
 
-export interface Rectangle extends Position, Dimensions {}
+export interface Rectangle extends Position, Dimensions { }
 
 // Vehicle configuration
 export interface VehicleConfig {
@@ -139,6 +139,10 @@ export interface GameState {
   lastLightningStrike: number;
   goldenBellCoinValue: number;
   goldenBellCollided: boolean;
+  // Boss battle
+  bossBattle: BossBattleState;
+  // Statistics
+  statistics: GameStatistics;
 }
 
 // Input state
@@ -165,8 +169,63 @@ export interface DifficultyConfig {
   powerUpSpawnRate: number;
 }
 
+// Boss battle types
+export type BossPhase = 1 | 2 | 3;
+
+export interface Boss extends Rectangle {
+  health: number;
+  maxHealth: number;
+  phase: BossPhase;
+  lastAttackTime: number;
+  attackPattern: 'machine_gun' | 'laser' | 'throw_obstacle';
+  color: string;
+  name: string;
+  velocityX: number; // Horizontal movement speed
+  direction: 1 | -1; // Movement direction (1 = right, -1 = left)
+}
+
+export interface BossAttack extends Rectangle {
+  type: 'bullet' | 'laser' | 'obstacle';
+  speed: number;
+  active: boolean;
+  damage: number;
+}
+
+export interface BossBattleState {
+  active: boolean;
+  boss: Boss | null;
+  attacks: BossAttack[];
+  startTime: number;
+  elapsedTime: number;
+  powerUpSpawnTimer: number;
+  bossDefeated: boolean;
+}
+
 // Storage types
-export interface SavedVehicle extends VehicleConfig {}
+export interface SavedVehicle extends VehicleConfig { }
+
+export interface PowerUpStats {
+  type: PowerUpType;
+  collected: number;
+  comboCrafted: number;
+}
+
+export interface BossRecord {
+  bossNumber: number;
+  distance: number;
+  defeated: boolean;
+  elapsedTime: number;
+  powerUpsUsed: PowerUpType[];
+  timestamp: number;
+}
+
+export interface GameStatistics {
+  powerUpStats: PowerUpStats[];
+  totalCoinsCollected: number;
+  totalDistanceTraveled: number;
+  totalObstaclesDestroyed: number;
+  bossRecords: BossRecord[];
+}
 
 export interface LeaderboardEntry {
   id: string;
@@ -176,6 +235,7 @@ export interface LeaderboardEntry {
   timestamp: number;
   vehicleName: string;
   vehicleConfig: VehicleConfig;
+  statistics?: GameStatistics; // 添加详细统计
 }
 
 export interface GameSave {

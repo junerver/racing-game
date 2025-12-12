@@ -10,6 +10,9 @@ import {
   VehicleConfig,
   InputState,
   ActivePowerUp,
+  PowerUpType,
+  GameStatistics,
+  PowerUpStats,
 } from '@/types/game';
 import {
   GAME_CONFIG,
@@ -37,6 +40,21 @@ import { getHighScore, getCoins, addCoins, spendCoins, addLeaderboardEntry, getS
 import { createSlotMachineState, addCoinToSlotMachine, spinSlotMachine, calculateSlotMachineReward, completeSlotMachineSpin } from './slotmachine';
 import { checkComboMatch, activateComboPowerUp, updateActivePowerUps, isPowerUpActive } from './combo';
 import { MACHINE_GUN_COIN_REWARD, POWERUP_CONFIG } from './constants';
+import {
+  createBossBattleState,
+  shouldTriggerBossBattle,
+  createBoss,
+  updateBossPhase,
+  getPhaseConfig,
+  selectBossAttackPattern,
+  createBossAttack,
+  updateBossAttacks,
+  damageBoss,
+  isBossDefeated,
+  BOSS_POWERUP_TYPES,
+  getBossNumber,
+  updateBossPosition,
+} from './boss';
 
 export class GameEngine {
   private state: GameState;
@@ -91,6 +109,14 @@ export class GameEngine {
       lastLightningStrike: 0,
       goldenBellCoinValue: 0,
       goldenBellCollided: false,
+      bossBattle: createBossBattleState(),
+      statistics: {
+        powerUpStats: [],
+        totalCoinsCollected: 0,
+        totalDistanceTraveled: 0,
+        totalObstaclesDestroyed: 0,
+        bossRecords: [],
+      },
     };
   }
 
@@ -196,15 +222,19 @@ export class GameEngine {
       this.animationFrameId = null;
     }
 
-    // Save leaderboard entry
+    // Update final statistics
+    this.state.statistics.totalObstaclesDestroyed = this.state.destroyedObstacleCount;
+
+    // Save leaderboard entry with statistics
     if (this.state.vehicle) {
       addLeaderboardEntry({
-        distance: Math.floor(this.state.distance / 100),
+        distance: Math.floor(this.state.distance / 1000), // Convert to km
         coins: this.state.coins,
         score: this.state.score,
         timestamp: Date.now(),
         vehicleName: this.state.vehicle.config.name,
         vehicleConfig: this.state.vehicle.config,
+        statistics: this.state.statistics,
       });
     }
 
@@ -295,12 +325,20 @@ export class GameEngine {
       }
     }
 
-    // Update distance (scaled by time)
-    this.state.distance += this.state.currentSpeed * timeScale;
+    // Update distance (scaled by time) - but pause during boss battle
+    if (!this.state.bossBattle.active) {
+      this.state.distance += this.state.currentSpeed * timeScale;
+    }
+    this.state.statistics.totalDistanceTraveled = Math.floor(this.state.distance / 1000); // Convert to km
 
     // Update score (scaled by time)
     const scoreMultiplier = isPowerUpActive(this.state.activePowerUps, 'score_multiplier') ? 2 : 1;
     this.state.score += Math.floor(this.state.currentSpeed * scoreMultiplier * timeScale);
+
+    // Check if should trigger boss battle
+    if (shouldTriggerBossBattle(this.state.distance) && !this.state.bossBattle.active) {
+      this.startBossBattle();
+    }
 
     // Update difficulty
     const difficulty = calculateDifficulty(this.state.distance);
@@ -309,10 +347,15 @@ export class GameEngine {
     // Update vehicle position based on input
     this.updateVehicle();
 
-    // Spawn obstacles
-    if (currentTime - this.lastObstacleSpawn > difficulty.obstacleSpawnRate) {
-      this.spawnObstacle();
-      this.lastObstacleSpawn = currentTime;
+    // Boss battle logic
+    if (this.state.bossBattle.active) {
+      this.updateBossBattle(currentTime, deltaTime, timeScale);
+    } else {
+      // Normal game mode - spawn obstacles
+      if (currentTime - this.lastObstacleSpawn > difficulty.obstacleSpawnRate) {
+        this.spawnObstacle();
+        this.lastObstacleSpawn = currentTime;
+      }
     }
 
     // Spawn basic power-ups (every 2 seconds)
@@ -625,7 +668,9 @@ export class GameEngine {
         if (checkVehicleObstacleCollision(this.state.vehicle, obstacle)) {
           this.state.obstacles.splice(i, 1);
           this.state.destroyedObstacleCount++;
+          this.state.statistics.totalObstaclesDestroyed = this.state.destroyedObstacleCount;
           this.state.coins += MACHINE_GUN_COIN_REWARD;
+          this.state.statistics.totalCoinsCollected += MACHINE_GUN_COIN_REWARD;
           addCoins(MACHINE_GUN_COIN_REWARD);
 
           // Invincible fire wheel: extend duration by 0.25s
@@ -656,10 +701,12 @@ export class GameEngine {
           bullet.active = false;
           this.state.obstacles = this.state.obstacles.filter(o => o !== obstacle);
           this.state.destroyedObstacleCount++;
+          this.state.statistics.totalObstaclesDestroyed = this.state.destroyedObstacleCount;
 
           // Award coins for destroyed obstacles
           const coinReward = MACHINE_GUN_COIN_REWARD;
           this.state.coins += coinReward;
+          this.state.statistics.totalCoinsCollected += coinReward;
           addCoins(coinReward);
 
           break;
@@ -679,7 +726,9 @@ export class GameEngine {
           if (comboType === 'double_coin') {
             this.state.coins += coinValue * 2;
             addCoins(coinValue * 2);
+            this.state.statistics.totalCoinsCollected += coinValue * 2;
             this.state.activePowerUps.pop();
+            this.trackPowerUpCollection(comboType, true);
           } else if (comboType === 'golden_bell') {
             // Golden bell: consume coin, don't add to balance or slot machine
             this.state.goldenBellCoinValue = coinValue;
@@ -687,18 +736,23 @@ export class GameEngine {
             this.state.activePowerUps.pop();
             const activeComboPowerUp = activateComboPowerUp(comboType, performance.now());
             this.state.activePowerUps.push(activeComboPowerUp);
+            this.trackPowerUpCollection(comboType, true);
           } else {
             this.state.coins += coinValue;
             addCoins(coinValue);
+            this.state.statistics.totalCoinsCollected += coinValue;
             this.state.slotMachine = addCoinToSlotMachine(this.state.slotMachine, coinValue);
+            this.trackPowerUpCollection(powerUp.type, false);
           }
         } else if (powerUp.type === 'heart') {
           const comboType = checkComboMatch(powerUp.type, this.state.activePowerUps);
           if (comboType === 'double_heart') {
             this.state.hearts = Math.min(this.state.hearts + 2, 3);
             this.state.activePowerUps.pop();
+            this.trackPowerUpCollection(comboType, true);
           } else {
             this.state.hearts = Math.min(this.state.hearts + 1, 3);
+            this.trackPowerUpCollection(powerUp.type, false);
           }
         } else {
           const comboType = checkComboMatch(powerUp.type, this.state.activePowerUps);
@@ -706,6 +760,7 @@ export class GameEngine {
             const activeComboPowerUp = activateComboPowerUp(comboType, performance.now());
             this.state.activePowerUps.pop();
             this.state.activePowerUps.push(activeComboPowerUp);
+            this.trackPowerUpCollection(comboType, true);
           } else {
             const config = POWERUP_CONFIG[powerUp.type];
             const durationMultiplier = this.state.vehicle?.stats.powerUpDurationMultiplier ?? 1.0;
@@ -722,6 +777,7 @@ export class GameEngine {
                 totalDuration: config.duration * durationMultiplier,
               });
             }
+            this.trackPowerUpCollection(powerUp.type, false);
           }
         }
       }
@@ -888,9 +944,11 @@ export class GameEngine {
     const obstacleCount = this.state.obstacles.length;
     this.state.obstacles = [];
     this.state.destroyedObstacleCount += obstacleCount;
+    this.state.statistics.totalObstaclesDestroyed = this.state.destroyedObstacleCount;
 
     const coinReward = MACHINE_GUN_COIN_REWARD * obstacleCount;
     this.state.coins += coinReward;
+    this.state.statistics.totalCoinsCollected += coinReward;
     addCoins(coinReward);
   }
 
@@ -904,9 +962,206 @@ export class GameEngine {
       if (obstacle.y < this.state.vehicle.y) {
         this.state.obstacles.splice(i, 1);
         this.state.destroyedObstacleCount++;
+        this.state.statistics.totalObstaclesDestroyed = this.state.destroyedObstacleCount;
         this.state.coins += MACHINE_GUN_COIN_REWARD;
+        this.state.statistics.totalCoinsCollected += MACHINE_GUN_COIN_REWARD;
         addCoins(MACHINE_GUN_COIN_REWARD);
       }
+    }
+  }
+
+  // Start boss battle
+  private startBossBattle(): void {
+    const boss = createBoss(this.state.distance);
+    this.state.bossBattle = {
+      active: true,
+      boss,
+      attacks: [],
+      startTime: performance.now(),
+      elapsedTime: 0,
+      powerUpSpawnTimer: 0,
+      bossDefeated: false,
+    };
+
+    // Clear existing obstacles
+    this.state.obstacles = [];
+
+    // Record boss encounter
+    const bossNumber = getBossNumber(this.state.distance);
+    this.state.statistics.bossRecords.push({
+      bossNumber,
+      distance: Math.floor(this.state.distance / 100),
+      defeated: false,
+      elapsedTime: 0,
+      powerUpsUsed: [],
+      timestamp: Date.now(),
+    });
+  }
+
+  // Update boss battle
+  private updateBossBattle(currentTime: number, deltaTime: number, timeScale: number): void {
+    if (!this.state.bossBattle.boss || !this.state.vehicle) return;
+
+    // Update boss position (horizontal movement)
+    this.state.bossBattle.boss = updateBossPosition(this.state.bossBattle.boss);
+    
+    const boss = this.state.bossBattle.boss;
+    this.state.bossBattle.elapsedTime = currentTime - this.state.bossBattle.startTime;
+
+    // Update boss phase
+    this.state.bossBattle.boss = updateBossPhase(boss);
+    const phaseConfig = getPhaseConfig(this.state.bossBattle.boss.phase);
+
+    // Boss attack logic
+    if (currentTime - boss.lastAttackTime > phaseConfig.attackInterval) {
+      const attackPattern = selectBossAttackPattern(this.state.bossBattle.boss.phase);
+      const newAttacks = createBossAttack(this.state.bossBattle.boss, attackPattern);
+      this.state.bossBattle.attacks.push(...newAttacks);
+      this.state.bossBattle.boss.lastAttackTime = currentTime;
+    }
+
+    // Update boss attacks
+    this.state.bossBattle.attacks = updateBossAttacks(this.state.bossBattle.attacks, timeScale);
+
+    // Check bullet-boss collision
+    for (const bullet of this.state.bullets) {
+      if (!bullet.active) continue;
+      if (this.checkBulletBossCollision(bullet, this.state.bossBattle.boss)) {
+        bullet.active = false;
+        this.state.bossBattle.boss = damageBoss(this.state.bossBattle.boss, 10);
+      }
+    }
+
+    // Check boss attack-vehicle collision
+    for (const attack of this.state.bossBattle.attacks) {
+      if (!attack.active) continue;
+      if (this.checkBossAttackVehicleCollision(attack, this.state.vehicle)) {
+        attack.active = false;
+
+        // Check if player has invincibility
+        const invincible = isPowerUpActive(this.state.activePowerUps, 'invincibility') ||
+          isPowerUpActive(this.state.activePowerUps, 'rotating_shield_gun') ||
+          isPowerUpActive(this.state.activePowerUps, 'turbo_overload') ||
+          isPowerUpActive(this.state.activePowerUps, 'golden_bell') ||
+          isPowerUpActive(this.state.activePowerUps, 'iron_body') ||
+          isPowerUpActive(this.state.activePowerUps, 'invincible_fire_wheel');
+
+        if (!invincible && !this.state.isRecovering) {
+          this.state.hearts--;
+          this.state.isRecovering = true;
+          this.state.recoveryEndTime = currentTime + COLLISION_RECOVERY_TIME;
+
+          if (this.state.hearts <= 0) {
+            this.gameOver();
+            return;
+          }
+        }
+      }
+    }
+
+    // Boss power-up spawning
+    this.state.bossBattle.powerUpSpawnTimer += deltaTime;
+    if (this.state.bossBattle.powerUpSpawnTimer > phaseConfig.powerUpSpawnInterval) {
+      if (Math.random() < phaseConfig.powerUpSpawnChance) {
+        this.spawnBossPowerUp();
+      }
+      this.state.bossBattle.powerUpSpawnTimer = 0;
+    }
+
+    // Check if boss is defeated
+    if (isBossDefeated(this.state.bossBattle.boss)) {
+      this.endBossBattle(true);
+    }
+  }
+
+  // End boss battle
+  private endBossBattle(defeated: boolean): void {
+    if (!this.state.bossBattle.boss) return;
+
+    this.state.bossBattle.bossDefeated = defeated;
+
+    // Update boss record
+    const lastRecord = this.state.statistics.bossRecords[this.state.statistics.bossRecords.length - 1];
+    if (lastRecord) {
+      lastRecord.defeated = defeated;
+      lastRecord.elapsedTime = this.state.bossBattle.elapsedTime;
+      lastRecord.powerUpsUsed = this.state.activePowerUps.map(p => p.type);
+    }
+
+    // Reward for defeating boss
+    if (defeated) {
+      const bossNumber = getBossNumber(this.state.distance);
+      const coinReward = 500 + bossNumber * 200;
+      this.state.coins += coinReward;
+      addCoins(coinReward);
+
+      // Heal one heart
+      this.state.hearts = Math.min(this.state.hearts + 1, 3);
+    }
+
+    // Reset boss battle state
+    this.state.bossBattle = createBossBattleState();
+  }
+
+  // Spawn power-up during boss battle
+  private spawnBossPowerUp(): void {
+    const lanes = getLanePositions();
+    const laneIndex = Math.floor(Math.random() * lanes.length);
+
+    const type = BOSS_POWERUP_TYPES[Math.floor(Math.random() * BOSS_POWERUP_TYPES.length)];
+
+    const powerUp: PowerUp = {
+      x: lanes[laneIndex] - POWERUP_SIZE / 2,
+      y: -POWERUP_SIZE,
+      width: POWERUP_SIZE,
+      height: POWERUP_SIZE,
+      type,
+      duration: POWERUP_CONFIG[type].duration,
+      active: true,
+      value: type === 'coin' ? 200 : undefined,
+    };
+
+    this.state.powerUps.push(powerUp);
+  }
+
+  // Check bullet-boss collision
+  private checkBulletBossCollision(
+    bullet: import('@/types/game').Bullet,
+    boss: import('@/types/game').Boss
+  ): boolean {
+    return (
+      bullet.x < boss.x + boss.width &&
+      bullet.x + bullet.width > boss.x &&
+      bullet.y < boss.y + boss.height &&
+      bullet.y + bullet.height > boss.y
+    );
+  }
+
+  // Check boss attack-vehicle collision
+  private checkBossAttackVehicleCollision(
+    attack: import('@/types/game').BossAttack,
+    vehicle: Vehicle
+  ): boolean {
+    return (
+      attack.x < vehicle.x + vehicle.width &&
+      attack.x + attack.width > vehicle.x &&
+      attack.y < vehicle.y + vehicle.height &&
+      attack.y + attack.height > vehicle.y
+    );
+  }
+
+  // Track power-up statistics
+  private trackPowerUpCollection(type: PowerUpType, isCombo: boolean = false): void {
+    let stat = this.state.statistics.powerUpStats.find(s => s.type === type);
+    if (!stat) {
+      stat = { type, collected: 0, comboCrafted: 0 };
+      this.state.statistics.powerUpStats.push(stat);
+    }
+
+    if (isCombo) {
+      stat.comboCrafted++;
+    } else {
+      stat.collected++;
     }
   }
 
