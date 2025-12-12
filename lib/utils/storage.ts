@@ -1,6 +1,6 @@
 // LocalStorage utilities for game persistence
 
-import { GameSave, SavedVehicle, VehicleConfig } from '@/types/game';
+import { GameSave, SavedVehicle, VehicleConfig, LeaderboardEntry, BossRecord } from '@/types/game';
 import { VEHICLE_PRESETS } from '@/lib/game/constants';
 
 const STORAGE_KEY = 'racing_game_save';
@@ -36,10 +36,32 @@ export const loadGameSave = (): GameSave => {
   try {
     const saved = window.localStorage.getItem(STORAGE_KEY);
     if (saved) {
-      return { ...defaultGameSave, ...JSON.parse(saved) };
+      const parsedData = JSON.parse(saved);
+
+      // 数据迁移：确保leaderboard中的statistics字段兼容新的BossRecord格式
+      if (parsedData.leaderboard && Array.isArray(parsedData.leaderboard)) {
+        parsedData.leaderboard = parsedData.leaderboard.map((entry: LeaderboardEntry) => {
+          // 确保statistics存在且bossRecords字段正确
+          if (entry.statistics && entry.statistics.bossRecords) {
+            entry.statistics.bossRecords = entry.statistics.bossRecords.map((record: BossRecord) => ({
+              ...record,
+              // 为旧记录添加默认值（如果字段不存在）
+              bossShape: record.bossShape || undefined,
+              bossColor: record.bossColor || undefined,
+              bossName: record.bossName || undefined,
+            }));
+          }
+          return entry;
+        });
+      }
+
+      return { ...defaultGameSave, ...parsedData };
     }
   } catch (e) {
     console.error('Failed to load game save:', e);
+    // 如果加载失败，尝试清除损坏的数据并返回默认值
+    console.warn('Corrupted save data detected, resetting to default');
+    return defaultGameSave;
   }
 
   return defaultGameSave;

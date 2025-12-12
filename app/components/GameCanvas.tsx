@@ -81,13 +81,11 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
     }
   }, []);
 
-  // Draw boss with different shapes based on boss level
+  // Draw boss with different shapes based on boss.shape property
   const drawBoss = useCallback((
     ctx: CanvasRenderingContext2D,
     boss: import('@/types/game').Boss
   ) => {
-    // Determine boss shape based on level (cycle through 5 different shapes)
-    const shapeIndex = Math.floor((boss.maxHealth - 1000) / 500) % 5;
     const centerX = boss.x + boss.width / 2;
     const centerY = boss.y + boss.height / 2;
 
@@ -101,8 +99,8 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
     ctx.shadowBlur = 25;
     ctx.shadowColor = boss.color;
 
-    switch (shapeIndex) {
-      case 0: {
+    switch (boss.shape) {
+      case 'diamond': {
         // Diamond/Rhombus Boss - 菱形战机
         ctx.fillStyle = bossGradient;
         ctx.beginPath();
@@ -138,7 +136,7 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
         break;
       }
 
-      case 1: {
+      case 'hexagon': {
         // Hexagon Boss - 六边形重装甲
         ctx.fillStyle = bossGradient;
         ctx.beginPath();
@@ -180,7 +178,7 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
         break;
       }
 
-      case 2: {
+      case 'star': {
         // Star Boss - 五角星突击型
         ctx.fillStyle = bossGradient;
         ctx.beginPath();
@@ -221,7 +219,7 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
         break;
       }
 
-      case 3: {
+      case 'triangle': {
         // Triangle/Arrow Boss - 三角箭头型
         ctx.fillStyle = bossGradient;
         ctx.beginPath();
@@ -268,7 +266,7 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
         break;
       }
 
-      case 4: {
+      case 'cross': {
         // Cross/Plus Boss - 十字重炮型
         const armWidth = boss.width * 0.25;
         const armHeight = boss.height * 0.25;

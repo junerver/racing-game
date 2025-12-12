@@ -82,17 +82,21 @@ export const shouldTriggerBossBattle = (distance: number): boolean => {
         distance < kmDistance * 1000 + 100;
 };
 
-// 获取Boss编号（第几个Boss）
+// 获取Boss编号（第几个Boss）- 从1开始
 export const getBossNumber = (distance: number): number => {
-    return Math.floor(distance / BOSS_CONFIG.spawnInterval);
+    return Math.floor(distance / BOSS_CONFIG.spawnInterval) + 1;
 };
 
 // 创建Boss
 export const createBoss = (distance: number): Boss => {
     const bossNumber = getBossNumber(distance);
-    const maxHealth = BOSS_CONFIG.baseHealth + bossNumber * BOSS_CONFIG.healthIncrement;
-    const colorIndex = bossNumber % BOSS_CONFIG.colors.length;
-    const nameIndex = bossNumber % BOSS_CONFIG.names.length;
+    const maxHealth = BOSS_CONFIG.baseHealth + (bossNumber - 1) * BOSS_CONFIG.healthIncrement;
+    const colorIndex = (bossNumber - 1) % BOSS_CONFIG.colors.length;
+    const nameIndex = (bossNumber - 1) % BOSS_CONFIG.names.length;
+    
+    // 随机选择Boss形态
+    const shapes: import('@/types/game').BossShape[] = ['diamond', 'hexagon', 'star', 'triangle', 'cross'];
+    const shape = shapes[Math.floor(Math.random() * shapes.length)];
 
     return {
         x: GAME_CONFIG.canvasWidth / 2 - BOSS_CONFIG.width / 2,
@@ -105,9 +109,10 @@ export const createBoss = (distance: number): Boss => {
         lastAttackTime: 0,
         attackPattern: 'machine_gun',
         color: BOSS_CONFIG.colors[colorIndex],
-        name: `${BOSS_CONFIG.names[nameIndex]} Lv.${bossNumber + 1}`,
+        name: `${BOSS_CONFIG.names[nameIndex]} Lv.${bossNumber}`,
         velocityX: 2, // Boss horizontal movement speed
         direction: 1, // Start moving right
+        shape, // Boss形态
     };
 };
 

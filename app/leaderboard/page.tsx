@@ -2,15 +2,37 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { getLeaderboard } from "@/lib/utils/storage";
+import { getLeaderboard, saveGameData, loadGameSave } from "@/lib/utils/storage";
 import { LeaderboardEntry } from "@/types/game";
+import GameStatistics from "@/app/components/GameStatistics";
 
 export default function LeaderboardPage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [selectedEntry, setSelectedEntry] = useState<LeaderboardEntry | null>(null);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  const loadLeaderboard = () => {
+    const data = getLeaderboard();
+    setLeaderboard(data);
+  };
 
   useEffect(() => {
-    setLeaderboard(getLeaderboard());
+    loadLeaderboard();
   }, []);
+
+  const clearOldRecords = () => {
+    // Only keep records with statistics
+    const newLeaderboard = leaderboard.filter(entry => entry.statistics);
+    saveGameData({ leaderboard: newLeaderboard });
+    loadLeaderboard();
+    setShowClearConfirm(false);
+  };
+
+  const clearAllRecords = () => {
+    saveGameData({ leaderboard: [] });
+    loadLeaderboard();
+    setShowClearConfirm(false);
+  };
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleString('zh-CN', {
@@ -44,7 +66,11 @@ export default function LeaderboardPage() {
             {leaderboard.map((entry, index) => (
               <div
                 key={entry.id}
-                className="bg-black/50 rounded-lg p-4 flex items-center gap-4 hover:bg-black/60 transition-colors"
+                onClick={() => entry.statistics && setSelectedEntry(entry)}
+                className={`bg-black/50 rounded-lg p-4 flex items-center gap-4 transition-colors ${entry.statistics
+                  ? 'hover:bg-black/60 cursor-pointer hover:border-2 hover:border-cyan-500'
+                  : 'opacity-75'
+                  }`}
               >
                 <div className="text-3xl font-bold text-yellow-400 w-12 text-center">
                   #{index + 1}
@@ -77,8 +103,93 @@ export default function LeaderboardPage() {
                     )}
                   </div>
                 </div>
+                {entry.statistics && (
+                  <div className="text-cyan-400 text-sm">
+                    点击查看详情 →
+                  </div>
+                )}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* 详情模态框 */}
+        {selectedEntry && selectedEntry.statistics && (
+          <div
+            className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+            onClick={() => setSelectedEntry(null)}
+          >
+            <div
+              className="bg-gray-900 rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto border-2 border-cyan-500"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="sticky top-0 bg-gray-900 border-b border-cyan-500 p-4 flex justify-between items-center z-10">
+                <div>
+                  <h2 className="text-2xl font-bold text-cyan-400">游戏统计详情</h2>
+                  <p className="text-sm text-gray-400">
+                    {formatDate(selectedEntry.timestamp)} | {selectedEntry.distance} km | {selectedEntry.score.toLocaleString()} 分
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedEntry(null)}
+                  className="text-3xl text-gray-400 hover:text-white transition-colors"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="p-4">
+                <GameStatistics
+                  statistics={selectedEntry.statistics}
+                  onClose={() => setSelectedEntry(null)}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 清除确认对话框 */}
+        {showClearConfirm && (
+          <div
+            className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+            onClick={() => setShowClearConfirm(false)}
+          >
+            <div
+              className="bg-gray-800 rounded-lg p-6 max-w-md border-2 border-red-500"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-xl font-bold text-white mb-4">⚠️ 确认操作</h3>
+              <p className="text-gray-300 mb-6">
+                请选择要执行的操作：
+              </p>
+              <div className="space-y-3">
+                {leaderboard.some(e => !e.statistics) && (
+                  <button
+                    onClick={clearOldRecords}
+                    className="w-full px-4 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors text-left"
+                  >
+                    <div className="font-bold">清除旧记录</div>
+                    <div className="text-sm text-orange-200">
+                      只删除没有统计数据的旧记录（保留新记录）
+                    </div>
+                  </button>
+                )}
+                <button
+                  onClick={clearAllRecords}
+                  className="w-full px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-left"
+                >
+                  <div className="font-bold">清除所有记录</div>
+                  <div className="text-sm text-red-200">
+                    删除所有排行榜记录（不可恢复）
+                  </div>
+                </button>
+                <button
+                  onClick={() => setShowClearConfirm(false)}
+                  className="w-full px-4 py-3 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors"
+                >
+                  取消
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -92,3 +203,5 @@ export default function LeaderboardPage() {
     </div>
   );
 }
+
+

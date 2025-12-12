@@ -1002,6 +1002,9 @@ export class GameEngine {
       elapsedTime: 0,
       powerUpsUsed: [],
       timestamp: Date.now(),
+      bossShape: boss.shape,
+      bossColor: boss.color,
+      bossName: boss.name,
     });
   }
 

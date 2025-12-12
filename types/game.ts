@@ -171,6 +171,7 @@ export interface DifficultyConfig {
 
 // Boss battle types
 export type BossPhase = 1 | 2 | 3;
+export type BossShape = 'diamond' | 'hexagon' | 'star' | 'triangle' | 'cross';
 
 export interface Boss extends Rectangle {
   health: number;
@@ -182,6 +183,7 @@ export interface Boss extends Rectangle {
   name: string;
   velocityX: number; // Horizontal movement speed
   direction: 1 | -1; // Movement direction (1 = right, -1 = left)
+  shape: BossShape; // Boss形态
 }
 
 export interface BossAttack extends Rectangle {
@@ -217,6 +219,9 @@ export interface BossRecord {
   elapsedTime: number;
   powerUpsUsed: PowerUpType[];
   timestamp: number;
+  bossShape?: BossShape; // Boss形态，用于显示剪影（可选，向后兼容）
+  bossColor?: string; // Boss颜色（可选，向后兼容）
+  bossName?: string; // Boss名称（可选，向后兼容）
 }
 
 export interface GameStatistics {
