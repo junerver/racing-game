@@ -81,6 +81,289 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
     }
   }, []);
 
+  // Draw boss with different shapes based on boss level
+  const drawBoss = useCallback((
+    ctx: CanvasRenderingContext2D,
+    boss: import('@/types/game').Boss
+  ) => {
+    // Determine boss shape based on level (cycle through 5 different shapes)
+    const shapeIndex = Math.floor((boss.maxHealth - 1000) / 500) % 5;
+    const centerX = boss.x + boss.width / 2;
+    const centerY = boss.y + boss.height / 2;
+
+    // Create gradient
+    const bossGradient = ctx.createLinearGradient(boss.x, boss.y, boss.x, boss.y + boss.height);
+    bossGradient.addColorStop(0, boss.color);
+    bossGradient.addColorStop(0.5, boss.color);
+    bossGradient.addColorStop(1, '#000000');
+
+    // Set shadow for glow effect
+    ctx.shadowBlur = 25;
+    ctx.shadowColor = boss.color;
+
+    switch (shapeIndex) {
+      case 0: {
+        // Diamond/Rhombus Boss - 菱形战机
+        ctx.fillStyle = bossGradient;
+        ctx.beginPath();
+        ctx.moveTo(centerX, boss.y); // Top point
+        ctx.lineTo(boss.x + boss.width, centerY); // Right point
+        ctx.lineTo(centerX, boss.y + boss.height); // Bottom point
+        ctx.lineTo(boss.x, centerY); // Left point
+        ctx.closePath();
+        ctx.fill();
+
+        // Inner accent lines
+        ctx.strokeStyle = '#00f5ff';
+        ctx.lineWidth = 2;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#00f5ff';
+        ctx.beginPath();
+        ctx.moveTo(centerX, boss.y + 10);
+        ctx.lineTo(boss.x + boss.width - 10, centerY);
+        ctx.lineTo(centerX, boss.y + boss.height - 10);
+        ctx.lineTo(boss.x + 10, centerY);
+        ctx.closePath();
+        ctx.stroke();
+
+        // Energy core at center
+        const coreGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, 15);
+        coreGradient.addColorStop(0, '#ffffff');
+        coreGradient.addColorStop(0.5, boss.color);
+        coreGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = coreGradient;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 15, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
+
+      case 1: {
+        // Hexagon Boss - 六边形重装甲
+        ctx.fillStyle = bossGradient;
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+          const angle = (Math.PI / 3) * i - Math.PI / 2;
+          const x = centerX + Math.cos(angle) * boss.width / 2;
+          const y = centerY + Math.sin(angle) * boss.height / 2;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        // Hex grid pattern
+        ctx.strokeStyle = '#ffbe0b';
+        ctx.lineWidth = 2;
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = '#ffbe0b';
+        for (let i = 0; i < 6; i++) {
+          const angle = (Math.PI / 3) * i - Math.PI / 2;
+          const x = centerX + Math.cos(angle) * (boss.width / 2 - 8);
+          const y = centerY + Math.sin(angle) * (boss.height / 2 - 8);
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+
+        // Corner reinforcements
+        ctx.fillStyle = boss.color;
+        for (let i = 0; i < 6; i++) {
+          const angle = (Math.PI / 3) * i - Math.PI / 2;
+          const x = centerX + Math.cos(angle) * boss.width / 2;
+          const y = centerY + Math.sin(angle) * boss.height / 2;
+          ctx.beginPath();
+          ctx.arc(x, y, 6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        break;
+      }
+
+      case 2: {
+        // Star Boss - 五角星突击型
+        ctx.fillStyle = bossGradient;
+        ctx.beginPath();
+        for (let i = 0; i < 10; i++) {
+          const angle = (Math.PI / 5) * i - Math.PI / 2;
+          const radius = (i % 2 === 0) ? boss.width / 2 : boss.width / 4;
+          const x = centerX + Math.cos(angle) * radius;
+          const y = centerY + Math.sin(angle) * radius * 0.8; // Slightly compressed vertically
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        // Inner star
+        ctx.strokeStyle = '#8338ec';
+        ctx.lineWidth = 3;
+        ctx.shadowBlur = 18;
+        ctx.shadowColor = '#8338ec';
+        ctx.beginPath();
+        for (let i = 0; i < 10; i++) {
+          const angle = (Math.PI / 5) * i - Math.PI / 2;
+          const radius = (i % 2 === 0) ? boss.width / 2 - 12 : boss.width / 4 - 5;
+          const x = centerX + Math.cos(angle) * radius;
+          const y = centerY + Math.sin(angle) * radius * 0.8;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+
+        // Pulsing center
+        const pulse = 1 + Math.sin(Date.now() / 200) * 0.3;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 8 * pulse, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
+
+      case 3: {
+        // Triangle/Arrow Boss - 三角箭头型
+        ctx.fillStyle = bossGradient;
+        ctx.beginPath();
+        ctx.moveTo(centerX, boss.y); // Top point
+        ctx.lineTo(boss.x + boss.width, boss.y + boss.height); // Bottom right
+        ctx.lineTo(boss.x, boss.y + boss.height); // Bottom left
+        ctx.closePath();
+        ctx.fill();
+
+        // Wing details
+        ctx.strokeStyle = '#06ffa5';
+        ctx.lineWidth = 3;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#06ffa5';
+        // Left wing line
+        ctx.beginPath();
+        ctx.moveTo(centerX, boss.y + 15);
+        ctx.lineTo(boss.x + 15, boss.y + boss.height - 15);
+        ctx.stroke();
+        // Right wing line
+        ctx.beginPath();
+        ctx.moveTo(centerX, boss.y + 15);
+        ctx.lineTo(boss.x + boss.width - 15, boss.y + boss.height - 15);
+        ctx.stroke();
+
+        // Cockpit window
+        ctx.fillStyle = '#60a5fa';
+        ctx.beginPath();
+        ctx.moveTo(centerX, boss.y + 20);
+        ctx.lineTo(centerX - 15, boss.y + 40);
+        ctx.lineTo(centerX + 15, boss.y + 40);
+        ctx.closePath();
+        ctx.fill();
+
+        // Engine exhausts
+        for (let i = 0; i < 3; i++) {
+          const x = boss.x + 20 + i * 30;
+          const exhaustGradient = ctx.createLinearGradient(x, boss.y + boss.height - 10, x, boss.y + boss.height);
+          exhaustGradient.addColorStop(0, boss.color);
+          exhaustGradient.addColorStop(1, '#ff6b35');
+          ctx.fillStyle = exhaustGradient;
+          ctx.fillRect(x, boss.y + boss.height - 10, 8, 10);
+        }
+        break;
+      }
+
+      case 4: {
+        // Cross/Plus Boss - 十字重炮型
+        const armWidth = boss.width * 0.25;
+        const armHeight = boss.height * 0.25;
+
+        ctx.fillStyle = bossGradient;
+        ctx.beginPath();
+        // Horizontal bar
+        ctx.rect(boss.x, centerY - armHeight / 2, boss.width, armHeight);
+        // Vertical bar
+        ctx.rect(centerX - armWidth / 2, boss.y, armWidth, boss.height);
+        ctx.fill();
+
+        // Weapon pods at ends
+        const podRadius = 12;
+        ctx.fillStyle = '#ff006e';
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = '#ff006e';
+        // Top pod
+        ctx.beginPath();
+        ctx.arc(centerX, boss.y, podRadius, 0, Math.PI * 2);
+        ctx.fill();
+        // Bottom pod
+        ctx.beginPath();
+        ctx.arc(centerX, boss.y + boss.height, podRadius, 0, Math.PI * 2);
+        ctx.fill();
+        // Left pod
+        ctx.beginPath();
+        ctx.arc(boss.x, centerY, podRadius, 0, Math.PI * 2);
+        ctx.fill();
+        // Right pod
+        ctx.beginPath();
+        ctx.arc(boss.x + boss.width, centerY, podRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Central reactor
+        ctx.strokeStyle = '#00f5ff';
+        ctx.lineWidth = 3;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#00f5ff';
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 18, 0, Math.PI * 2);
+        ctx.stroke();
+
+        const reactorGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, 18);
+        reactorGradient.addColorStop(0, '#ffffff');
+        reactorGradient.addColorStop(0.6, boss.color);
+        reactorGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = reactorGradient;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 18, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
+    }
+
+    ctx.shadowBlur = 0;
+
+    // Boss name tag
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    ctx.fillRect(boss.x, boss.y - 30, boss.width, 25);
+    ctx.fillStyle = boss.color;
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = boss.color;
+    ctx.fillText(boss.name, boss.x + boss.width / 2, boss.y - 17);
+    ctx.shadowBlur = 0;
+
+    // Boss health bar
+    const healthBarWidth = boss.width;
+    const healthBarHeight = 8;
+    const healthPercent = boss.health / boss.maxHealth;
+
+    // Health bar background
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.fillRect(boss.x, boss.y - 8, healthBarWidth, healthBarHeight);
+
+    // Health bar fill (color changes based on health)
+    let healthColor = '#10b981'; // Green
+    if (healthPercent < 0.5) healthColor = '#f59e0b'; // Orange
+    if (healthPercent < 0.2) healthColor = '#ef4444'; // Red
+
+    ctx.fillStyle = healthColor;
+    ctx.fillRect(boss.x, boss.y - 8, healthBarWidth * healthPercent, healthBarHeight);
+
+    // Health bar border with glow
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.shadowBlur = 5;
+    ctx.shadowColor = healthColor;
+    ctx.strokeRect(boss.x, boss.y - 8, healthBarWidth, healthBarHeight);
+    ctx.shadowBlur = 0;
+  }, []);
+
   // Draw the game
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -125,62 +408,7 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
 
     // Draw Boss (if boss battle is active)
     if (gameState.bossBattle.active && gameState.bossBattle.boss) {
-      const boss = gameState.bossBattle.boss;
-
-      // Draw boss vehicle (larger cyberpunk-style car)
-      const bossGradient = ctx.createLinearGradient(boss.x, boss.y, boss.x, boss.y + boss.height);
-      bossGradient.addColorStop(0, boss.color);
-      bossGradient.addColorStop(1, '#000000');
-
-      // Main boss body with glow
-      ctx.shadowBlur = 20;
-      ctx.shadowColor = boss.color;
-      ctx.fillStyle = bossGradient;
-      ctx.beginPath();
-      ctx.roundRect(boss.x, boss.y, boss.width, boss.height, 8);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-
-      // Boss details - cyberpunk accents
-      ctx.strokeStyle = '#00f5ff';
-      ctx.lineWidth = 2;
-      ctx.shadowBlur = 10;
-      ctx.shadowColor = '#00f5ff';
-      ctx.beginPath();
-      ctx.roundRect(boss.x + 5, boss.y + 5, boss.width - 10, boss.height - 10, 5);
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-
-      // Boss name tag
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      ctx.fillRect(boss.x, boss.y - 30, boss.width, 25);
-      ctx.fillStyle = boss.color;
-      ctx.font = 'bold 12px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(boss.name, boss.x + boss.width / 2, boss.y - 17);
-
-      // Boss health bar
-      const healthBarWidth = boss.width;
-      const healthBarHeight = 8;
-      const healthPercent = boss.health / boss.maxHealth;
-
-      // Health bar background
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-      ctx.fillRect(boss.x, boss.y - 8, healthBarWidth, healthBarHeight);
-
-      // Health bar fill (color changes based on health)
-      let healthColor = '#10b981'; // Green
-      if (healthPercent < 0.5) healthColor = '#f59e0b'; // Orange
-      if (healthPercent < 0.2) healthColor = '#ef4444'; // Red
-
-      ctx.fillStyle = healthColor;
-      ctx.fillRect(boss.x, boss.y - 8, healthBarWidth * healthPercent, healthBarHeight);
-
-      // Health bar border
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(boss.x, boss.y - 8, healthBarWidth, healthBarHeight);
+      drawBoss(ctx, gameState.bossBattle.boss);
     }
 
     // Draw boss attacks
