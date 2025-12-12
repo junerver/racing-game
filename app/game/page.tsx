@@ -10,11 +10,13 @@ import GameCanvas from '@/app/components/GameCanvas';
 import GameHUD from '@/app/components/GameHUD';
 import ShopUI from '@/app/components/ShopUI';
 import GameStatus from '@/app/components/GameStatus';
+import GameStatistics from '@/app/components/GameStatistics';
 
 export default function GamePage() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [showDifficultySelect, setShowDifficultySelect] = useState(false);
+  const [showStatistics, setShowStatistics] = useState(false);
 
   // Initialize game engine
   useEffect(() => {
@@ -290,21 +292,37 @@ export default function GamePage() {
                   <p className="text-yellow-400 mt-2 font-bold">New High Score!</p>
                 )}
               </div>
-              <div className="flex gap-4">
+              <div className="flex flex-col gap-3">
+                <div className="flex gap-4">
+                  <button
+                    onClick={handleRestart}
+                    className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white text-xl font-semibold rounded-lg transition-colors"
+                  >
+                    Play Again
+                  </button>
+                  <Link
+                    href="/"
+                    className="px-8 py-3 bg-gray-600 hover:bg-gray-700 text-white text-xl font-semibold rounded-lg transition-colors"
+                  >
+                    Menu
+                  </Link>
+                </div>
                 <button
-                  onClick={handleRestart}
-                  className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white text-xl font-semibold rounded-lg transition-colors"
+                  onClick={() => setShowStatistics(true)}
+                  className="px-8 py-3 bg-cyan-600 hover:bg-cyan-700 text-white text-lg font-semibold rounded-lg transition-colors"
                 >
-                  Play Again
+                  📊 查看统计
                 </button>
-                <Link
-                  href="/"
-                  className="px-8 py-3 bg-gray-600 hover:bg-gray-700 text-white text-xl font-semibold rounded-lg transition-colors"
-                >
-                  Menu
-                </Link>
               </div>
             </div>
+          )}
+
+          {/* Statistics Modal */}
+          {showStatistics && gameState && (
+            <GameStatistics
+              statistics={gameState.statistics}
+              onClose={() => setShowStatistics(false)}
+            />
           )}
         </div>
 

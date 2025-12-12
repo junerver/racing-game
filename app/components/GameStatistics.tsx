@@ -169,7 +169,7 @@ export default function GameStatisticsModal({ statistics, onClose }: GameStatist
                             <div className="bg-gray-900 p-3 rounded-lg border border-gray-700">
                                 <div className="text-sm text-gray-400">总行驶距离</div>
                                 <div className="text-2xl font-bold text-white">
-                                    {Math.floor(statistics.totalDistanceTraveled / 100)} km
+                                    {statistics.totalDistanceTraveled} km
                                 </div>
                             </div>
                             <div className="bg-gray-900 p-3 rounded-lg border border-gray-700">
