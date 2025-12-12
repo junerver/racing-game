@@ -68,6 +68,7 @@ export class GameEngine {
   private onStateChange: ((state: GameState) => void) | null;
   private accumulator: number;
   private readonly fixedTimeStep: number = 16.67; // Fixed 60 FPS
+  private lastBossDistance: number = -1; // Track last boss spawn distance to prevent duplicates
 
   constructor() {
     this.state = this.createInitialState();
@@ -80,6 +81,7 @@ export class GameEngine {
     this.lastFrameTime = 0;
     this.onStateChange = null;
     this.accumulator = 0;
+    this.lastBossDistance = -1;
   }
 
   private createInitialState(): GameState {
@@ -186,6 +188,7 @@ export class GameEngine {
     this.lastShopPowerUpSpawn = this.lastFrameTime;
     this.lastHeartPowerUpSpawn = this.lastFrameTime;
     this.accumulator = 0;
+    this.lastBossDistance = -1; // Reset boss tracking
 
     this.notifyStateChange();
     this.gameLoop();
@@ -336,7 +339,11 @@ export class GameEngine {
     this.state.score += Math.floor(this.state.currentSpeed * scoreMultiplier * timeScale);
 
     // Check if should trigger boss battle
-    if (shouldTriggerBossBattle(this.state.distance) && !this.state.bossBattle.active) {
+    const currentBossDistance = Math.floor(this.state.distance / 100000) * 100000;
+    if (shouldTriggerBossBattle(this.state.distance) &&
+      !this.state.bossBattle.active &&
+      currentBossDistance !== this.lastBossDistance) {
+      this.lastBossDistance = currentBossDistance;
       this.startBossBattle();
     }
 
