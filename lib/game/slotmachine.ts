@@ -101,15 +101,15 @@ export const calculateSlotMachineReward = (
       return SLOT_MACHINE_CONFIG.rewards['谢谢'];
     }
 
-    // Three '❌' - penalty
+    // Three '❌' - penalty (使用半池惩罚)
     if (first === '❌') {
-      return -poolAmount;
+      return -Math.floor(poolAmount / 2);
     }
 
-    // Three numbers - multiplier reward
+    // Three numbers - multiplier reward (使用半池计算奖励)
     if (typeof first === 'number') {
       const multiplier = SLOT_MACHINE_CONFIG.multipliers[first];
-      return Math.floor(poolAmount * (multiplier - 1));
+      return Math.floor((poolAmount / 2) * (multiplier - 1));
     }
   }
 
