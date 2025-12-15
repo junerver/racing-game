@@ -143,10 +143,11 @@ export const getCoins = (): number => {
   return loadGameSave().coins;
 };
 
-// Add coins
+// Add coins (with 9999 cap)
 export const addCoins = (amount: number): void => {
   const current = loadGameSave();
-  saveGameData({ coins: current.coins + amount });
+  const newAmount = Math.min(current.coins + amount, 9999);
+  saveGameData({ coins: newAmount });
 };
 
 // Spend coins

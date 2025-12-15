@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+## [关键Bug修复] - 2025-12-15
+
+### Fixed
+
+- **金币显示和存储不同步问题** ([`lib/game/engine.ts`](lib/game/engine.ts:466), [`lib/utils/storage.ts`](lib/utils/storage.ts:146))
+  - 修复金币显示9999但实际购买道具不扣金币，游戏结束后显示真实金币数量的严重bug
+  - **根本原因**：游戏引擎每帧强制将 `state.coins` 设置为9999，导致游戏显示与本地存储不同步
+  - **修复方案**：
+    1. 移除 `engine.ts` 中 `update()` 方法里的金币上限检查逻辑
+    2. 将金币上限检查移至 `storage.ts` 的 `addCoins()` 函数中
+    3. 确保金币上限在数据持久化时统一控制
+  - **影响范围**：
+    - 游戏内金币显示现在与本地存储完全同步
+    - 购买道具时正确扣除金币并实时更新显示
+    - 游戏结束统计显示正确的金币数量
+    - 金币上限9999在收集时正确生效
+
+### Technical Details
+
+- **问题表现**：
+  1. 游戏中收集7600金币时，显示9999
+  2. 购买道具后显示仍为9999（实际本地存储已扣除）
+  3. 游戏结束显示7600（本地存储的真实值）
+
+- **修复前的错误逻辑**：
+  - engine.ts update() 方法中每帧强制覆盖 state.coins 为9999
+  - 导致 purchaseShopPowerUp() 中的 getCoins() 同步失效
+
+- **修复后的正确逻辑**：
+  - 在 storage.ts 的 addCoins() 函数中统一控制上限
+  - 使用 Math.min(current.coins + amount, 9999) 确保不超过上限
+  - 游戏状态和持久化存储保持一致
+
 ## [Bug修复] - 2025-12-15
 
 ### Fixed

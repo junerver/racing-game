@@ -463,10 +463,7 @@ export class GameEngine {
       this.state.recoveryEndTime = 0;
     }
 
-    // Check coin limit (cap at 9999, no auto recovery)
-    if (this.state.coins >= 9999) {
-      this.state.coins = 9999;
-    }
+    // Note: Coin limit is now enforced in addCoins() function
   }
 
   // Update vehicle position
