@@ -71,6 +71,7 @@ export class GameEngine {
   private lastBossDistance: number = -1; // Track last boss spawn distance to prevent duplicates
   private lastStormLightning: number = 0; // Track storm lightning timing
   private lastBulletSpawn: number = 0; // Track bullet spawn timing
+  private lastDeathStarDamage: number = 0; // Track death star beam damage timing
 
   constructor() {
     this.state = this.createInitialState();
@@ -86,6 +87,7 @@ export class GameEngine {
     this.lastBossDistance = -1;
     this.lastStormLightning = 0;
     this.lastBulletSpawn = 0;
+    this.lastDeathStarDamage = 0;
   }
 
   // Helper function to safely add coins with cap
@@ -204,6 +206,7 @@ export class GameEngine {
     this.lastBossDistance = -1; // Reset boss tracking
     this.lastStormLightning = 0; // Reset storm lightning timer
     this.lastBulletSpawn = 0; // Reset bullet spawn timer
+    this.lastDeathStarDamage = 0; // Reset death star damage timer
 
     this.notifyStateChange();
     this.gameLoop();
@@ -461,7 +464,7 @@ export class GameEngine {
 
     // Death star beam - continuous beam effect
     if (hasDeathStarBeam && this.state.vehicle) {
-      this.handleDeathStarBeam();
+      this.handleDeathStarBeam(currentTime);
     }
 
     // Storm lightning effect - clear all obstacles every 1.5 seconds
@@ -1009,7 +1012,7 @@ export class GameEngine {
   }
 
   // Death star beam handler
-  private handleDeathStarBeam(): void {
+  private handleDeathStarBeam(currentTime: number): void {
     if (!this.state.vehicle) return;
 
     // Destroy all obstacles in front of vehicle
@@ -1021,6 +1024,19 @@ export class GameEngine {
         this.state.statistics.totalObstaclesDestroyed = this.state.destroyedObstacleCount;
         this.addCoinsWithCap(MACHINE_GUN_COIN_REWARD);
         this.state.statistics.totalCoinsCollected += MACHINE_GUN_COIN_REWARD;
+      }
+    }
+
+    // Damage boss if in boss battle - high frequency, low damage
+    // Target: 25-30% of boss health over 10 seconds
+    // For 1000 HP boss: 250-300 damage total
+    // Frequency: every 100ms (10 times per second, 100 times in 10 seconds)
+    // Damage per hit: 2.5-3 points (average 2.75, total ~275 damage)
+    if (this.state.bossBattle.active && this.state.bossBattle.boss) {
+      if (currentTime - this.lastDeathStarDamage >= 100) { // Every 100ms
+        const bossDamage = 2 + Math.floor(Math.random() * 2); // 2-3 damage per hit
+        this.state.bossBattle.boss = damageBoss(this.state.bossBattle.boss, bossDamage);
+        this.lastDeathStarDamage = currentTime;
       }
     }
   }
