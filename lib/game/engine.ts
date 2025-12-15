@@ -69,6 +69,8 @@ export class GameEngine {
   private accumulator: number;
   private readonly fixedTimeStep: number = 16.67; // Fixed 60 FPS
   private lastBossDistance: number = -1; // Track last boss spawn distance to prevent duplicates
+  private lastStormLightning: number = 0; // Track storm lightning timing
+  private lastBulletSpawn: number = 0; // Track bullet spawn timing
 
   constructor() {
     this.state = this.createInitialState();
@@ -82,6 +84,8 @@ export class GameEngine {
     this.onStateChange = null;
     this.accumulator = 0;
     this.lastBossDistance = -1;
+    this.lastStormLightning = 0;
+    this.lastBulletSpawn = 0;
   }
 
   // Helper function to safely add coins with cap
@@ -198,6 +202,8 @@ export class GameEngine {
     this.lastHeartPowerUpSpawn = this.lastFrameTime;
     this.accumulator = 0;
     this.lastBossDistance = -1; // Reset boss tracking
+    this.lastStormLightning = 0; // Reset storm lightning timer
+    this.lastBulletSpawn = 0; // Reset bullet spawn timer
 
     this.notifyStateChange();
     this.gameLoop();
@@ -458,7 +464,7 @@ export class GameEngine {
       this.handleDeathStarBeam();
     }
 
-    // Storm lightning effect - clear all obstacles every 2 seconds
+    // Storm lightning effect - clear all obstacles every 1.5 seconds
     if (isPowerUpActive(this.state.activePowerUps, 'storm_lightning')) {
       this.handleStormLightning(currentTime);
     }
@@ -874,7 +880,6 @@ export class GameEngine {
   }
 
   // Spawn bullet
-  private lastBulletSpawn = 0;
   private spawnBullet(isQuadGun: boolean = false, isRotatingGun: boolean = false): void {
     if (!this.state.vehicle) return;
     const now = performance.now();
@@ -980,9 +985,8 @@ export class GameEngine {
   }
 
   // Storm lightning effect handler
-  private lastStormLightning = 0;
   private handleStormLightning(currentTime: number): void {
-    if (currentTime - this.lastStormLightning < 1500) return; // Every 1.5 seconds
+    if (currentTime - this.lastStormLightning < 1000) return; // Every 1 second
 
     this.lastStormLightning = currentTime;
     this.state.lastLightningStrike = currentTime;
@@ -997,9 +1001,9 @@ export class GameEngine {
     this.addCoinsWithCap(coinReward);
     this.state.statistics.totalCoinsCollected += coinReward;
 
-    // Damage boss if in boss battle (3-5 damage per strike)
+    // Damage boss if in boss battle (15-25 damage per strike)
     if (this.state.bossBattle.active && this.state.bossBattle.boss) {
-      const bossDamage = 3 + Math.floor(Math.random() * 3); // 3-5 damage
+      const bossDamage = 15 + Math.floor(Math.random() * 11); // 15-25 damage
       this.state.bossBattle.boss = damageBoss(this.state.bossBattle.boss, bossDamage);
     }
   }

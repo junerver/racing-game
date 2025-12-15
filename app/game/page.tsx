@@ -85,27 +85,44 @@ export default function GamePage() {
     const engine = getGameEngine();
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Prevent default for game control keys
+      if (['ArrowLeft', 'ArrowRight', ' ', 'Escape'].includes(e.key)) {
+        e.preventDefault();
+      }
+
       if (e.key === 'ArrowLeft') {
         engine.setInput({ left: true });
       } else if (e.key === 'ArrowRight') {
         engine.setInput({ right: true });
       } else if (e.key === ' ' || e.key === 'Enter') {
-        e.preventDefault(); // Prevent page scroll
         const state = engine.getState();
         if (state.status === 'idle' || state.status === 'game_over') {
           engine.reset();
           engine.start();
           incrementGamesPlayed();
         } else if (state.status === 'playing') {
-          engine.pause();
+          const now = Date.now();
+          if (now - lastPauseTimeRef.current >= 300) {
+            lastPauseTimeRef.current = now;
+            pauseMenuShowTimeRef.current = now;
+            engine.pause();
+          }
         } else if (state.status === 'paused') {
-          engine.resume();
+          const now = Date.now();
+          if (now - pauseMenuShowTimeRef.current >= 300) {
+            lastPauseTimeRef.current = now;
+            engine.resume();
+          }
         }
       } else if (e.key === 'Escape') {
         const state = engine.getState();
-        if (state.status === 'playing') {
+        const now = Date.now();
+        if (state.status === 'playing' && now - lastPauseTimeRef.current >= 300) {
+          lastPauseTimeRef.current = now;
+          pauseMenuShowTimeRef.current = now;
           engine.pause();
-        } else if (state.status === 'paused') {
+        } else if (state.status === 'paused' && now - pauseMenuShowTimeRef.current >= 300) {
+          lastPauseTimeRef.current = now;
           engine.resume();
         }
       } else if (e.key === '1') {
