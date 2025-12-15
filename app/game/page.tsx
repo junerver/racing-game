@@ -52,6 +52,7 @@ export default function GamePage() {
 
   // Use ref to track last pause time to prevent rapid toggle
   const lastPauseTimeRef = useRef(0);
+  const pauseMenuShowTimeRef = useRef(0);
 
   const handleTouchCenter = useCallback(() => {
     const now = Date.now();
@@ -59,7 +60,6 @@ export default function GamePage() {
     if (now - lastPauseTimeRef.current < 300) {
       return;
     }
-    lastPauseTimeRef.current = now;
 
     const engine = getGameEngine();
     const state = engine.getState();
@@ -67,8 +67,15 @@ export default function GamePage() {
     // Only toggle pause/resume during gameplay
     // Prevent accidental triggers during other states
     if (state.status === 'playing') {
+      lastPauseTimeRef.current = now;
+      pauseMenuShowTimeRef.current = now; // Record when pause menu is shown
       engine.pause();
     } else if (state.status === 'paused') {
+      // Prevent clicking resume too quickly after pause menu appears
+      if (now - pauseMenuShowTimeRef.current < 300) {
+        return;
+      }
+      lastPauseTimeRef.current = now;
       engine.resume();
     }
   }, []);
@@ -151,15 +158,27 @@ export default function GamePage() {
   }, []);
 
   const handleRestart = useCallback(() => {
+    const now = Date.now();
+    // Prevent accidental restart immediately after pausing
+    if (now - pauseMenuShowTimeRef.current < 300) {
+      return;
+    }
     const engine = getGameEngine();
     engine.reset();
     engine.start();
     incrementGamesPlayed();
+    lastPauseTimeRef.current = now;
   }, []);
 
   const handleResume = useCallback(() => {
+    const now = Date.now();
+    // Prevent accidental resume immediately after pausing
+    if (now - pauseMenuShowTimeRef.current < 300) {
+      return;
+    }
     const engine = getGameEngine();
     engine.resume();
+    lastPauseTimeRef.current = now;
   }, []);
 
   const handlePause = useCallback(() => {

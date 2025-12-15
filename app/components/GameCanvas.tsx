@@ -24,6 +24,7 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
   const roadOffsetRef = useRef(0);
   const isDraggingRef = useRef(false);
   const pointerIdRef = useRef<number | null>(null);
+  const centerClickedRef = useRef(false);
 
   // Draw a vehicle (car shape)
   const drawVehicle = useCallback((
@@ -821,10 +822,9 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
       y >= centerAreaTop &&
       y <= centerAreaBottom
     ) {
-      // Trigger pause/resume and stop event propagation
-      e.stopPropagation();
-      onTouchCenter?.();
-      return;
+      // Mark that center was clicked to prevent pointerUp from triggering
+      centerClickedRef.current = true;
+      return; // Don't trigger pause here, wait for pointerUp
     }
 
     // Define outer boundary (类似汉字"回"的外框)
@@ -888,6 +888,40 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     e.preventDefault(); // Prevent default touch behavior
 
+    // Check if this is a center area click (pointer down and up both in center)
+    if (centerClickedRef.current) {
+      const canvas = canvasRef.current;
+      if (!canvas) {
+        centerClickedRef.current = false;
+        return;
+      }
+
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const centerX = GAME_CONFIG.canvasWidth / 2;
+      const centerY = GAME_CONFIG.canvasHeight / 2;
+
+      const centerAreaSize = 60;
+      const centerAreaLeft = centerX - centerAreaSize / 2;
+      const centerAreaRight = centerX + centerAreaSize / 2;
+      const centerAreaTop = centerY - centerAreaSize / 2;
+      const centerAreaBottom = centerY + centerAreaSize / 2;
+
+      // Only trigger pause if pointerUp is also in center area (complete click)
+      if (
+        x >= centerAreaLeft &&
+        x <= centerAreaRight &&
+        y >= centerAreaTop &&
+        y <= centerAreaBottom
+      ) {
+        onTouchCenter?.();
+      }
+
+      centerClickedRef.current = false;
+      return;
+    }
+
     if (isDraggingRef.current && pointerIdRef.current === e.pointerId) {
       const canvas = canvasRef.current;
       if (canvas) {
@@ -906,6 +940,8 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
   };
 
   const handlePointerCancel = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    // Reset center click flag on cancel
+    centerClickedRef.current = false;
     handlePointerUp(e);
   };
 
