@@ -72,7 +72,7 @@ export class GameEngine {
 
   constructor() {
     this.state = this.createInitialState();
-    this.inputState = { left: false, right: false };
+    this.inputState = { left: false, right: false, targetX: undefined, isDragging: false };
     this.lastObstacleSpawn = 0;
     this.lastPowerUpSpawn = 0;
     this.lastShopPowerUpSpawn = 0;
@@ -463,14 +463,9 @@ export class GameEngine {
       this.state.recoveryEndTime = 0;
     }
 
-    // Check coin limit and convert to health
+    // Check coin limit (cap at 9999, no auto recovery)
     if (this.state.coins >= 9999) {
-      if (this.state.hearts < 3) {
-        this.state.hearts++;
-        this.state.coins = 0;
-      } else {
-        this.state.coins = 9999;
-      }
+      this.state.coins = 9999;
     }
   }
 
@@ -487,11 +482,34 @@ export class GameEngine {
     // 高等级轮胎会有"过度转向"效果
     const effectiveHandling = handling / stability;
 
-    if (this.inputState.left) {
-      this.state.vehicle.x = Math.max(minX, this.state.vehicle.x - effectiveHandling);
-    }
-    if (this.inputState.right) {
-      this.state.vehicle.x = Math.min(maxX, this.state.vehicle.x + effectiveHandling);
+    // 优先使用拖动跟随模式
+    if (this.inputState.isDragging && this.inputState.targetX !== undefined) {
+      // 拖动跟随：车辆平滑移动到目标位置
+      // 目标位置是触摸点的 x 坐标，需要转换为车辆中心
+      const targetVehicleX = this.inputState.targetX - VEHICLE_WIDTH / 2;
+      const currentX = this.state.vehicle.x;
+      const deltaX = targetVehicleX - currentX;
+
+      // 使用车辆的 handling 属性限制移动速度
+      // 这样车辆不会瞬移，而是以受限的速度跟随
+      const maxMoveDistance = effectiveHandling;
+
+      if (Math.abs(deltaX) > 0.5) {
+        // 计算移动方向和距离
+        const moveDistance = Math.min(Math.abs(deltaX), maxMoveDistance);
+        const direction = deltaX > 0 ? 1 : -1;
+
+        // 应用移动
+        this.state.vehicle.x = Math.max(minX, Math.min(maxX, currentX + direction * moveDistance));
+      }
+    } else {
+      // 传统的左右按键控制（桌面端或备用）
+      if (this.inputState.left) {
+        this.state.vehicle.x = Math.max(minX, this.state.vehicle.x - effectiveHandling);
+      }
+      if (this.inputState.right) {
+        this.state.vehicle.x = Math.min(maxX, this.state.vehicle.x + effectiveHandling);
+      }
     }
   }
 
@@ -796,6 +814,24 @@ export class GameEngine {
     const config = POWERUP_CONFIG[type];
     if (!config.isSellable || !config.price) return false;
 
+    // Special handling for full_recovery
+    if (type === 'full_recovery') {
+      // Only available when coins are at 9999 and hearts < 3
+      if (this.state.coins < 9999 || this.state.hearts >= 3) return false;
+
+      if (spendCoins(config.price)) {
+        this.state.coins = getCoins();
+        // Restore all hearts
+        this.state.hearts = 3;
+        // Grant 10 seconds invincibility
+        this.state.isRecovering = true;
+        this.state.recoveryEndTime = performance.now() + config.duration;
+        this.notifyStateChange();
+        return true;
+      }
+      return false;
+    }
+
     // Prevent purchasing invincibility if shield-based combo is active
     if (type === 'invincibility') {
       const hasShieldCombo = this.state.activePowerUps.some(p =>
@@ -997,7 +1033,7 @@ export class GameEngine {
     const bossNumber = getBossNumber(this.state.distance);
     this.state.statistics.bossRecords.push({
       bossNumber,
-      distance: Math.floor(this.state.distance / 100),
+      distance: Math.floor(this.state.distance / 1000),
       defeated: false,
       elapsedTime: 0,
       powerUpsUsed: [],

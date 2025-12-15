@@ -16,11 +16,14 @@ interface GameCanvasProps {
   onTouchLeft?: (pressed: boolean) => void;
   onTouchRight?: (pressed: boolean) => void;
   onTouchCenter?: () => void;
+  onDrag?: (targetX: number | undefined, isDragging: boolean) => void;
 }
 
-export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTouchCenter }: GameCanvasProps) {
+export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTouchCenter, onDrag }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const roadOffsetRef = useRef(0);
+  const isDraggingRef = useRef(false);
+  const pointerIdRef = useRef<number | null>(null);
 
   // Draw a vehicle (car shape)
   const drawVehicle = useCallback((
@@ -791,7 +794,7 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
     };
   }, [draw]);
 
-  // Handle touch/click controls
+  // Handle touch/click controls with drag support
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     e.preventDefault(); // Prevent default touch behavior
     const canvas = canvasRef.current;
@@ -831,20 +834,79 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
       Math.abs(x - centerX) > outerBoundary ||
       Math.abs(y - centerY) > outerBoundary;
 
-    // Only trigger left/right controls outside the "回" shape
+    // Only trigger controls outside the "回" shape
     if (isInOuterArea) {
-      if (x < centerX) {
-        onTouchLeft?.(true);
-      } else {
-        onTouchRight?.(true);
+      // 开始拖动跟随
+      isDraggingRef.current = true;
+      pointerIdRef.current = e.pointerId;
+      canvas.setPointerCapture(e.pointerId);
+
+      // 将画布坐标转换为游戏世界坐标
+      const scaleX = GAME_CONFIG.canvasWidth / rect.width;
+      const gameX = x * scaleX;
+
+      // 限制在道路范围内
+      const minX = GAME_CONFIG.roadOffset;
+      const maxX = GAME_CONFIG.roadOffset + GAME_CONFIG.roadWidth;
+      const clampedX = Math.max(minX, Math.min(maxX, gameX));
+
+      onDrag?.(clampedX, true);
+
+      // 保留旧的左右控制作为桌面端备用
+      if (!onDrag) {
+        if (x < centerX) {
+          onTouchLeft?.(true);
+        } else {
+          onTouchRight?.(true);
+        }
       }
     }
   };
 
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!isDraggingRef.current || pointerIdRef.current !== e.pointerId) return;
+
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+
+    // 将画布坐标转换为游戏世界坐标
+    const scaleX = GAME_CONFIG.canvasWidth / rect.width;
+    const gameX = x * scaleX;
+
+    // 限制在道路范围内
+    const minX = GAME_CONFIG.roadOffset;
+    const maxX = GAME_CONFIG.roadOffset + GAME_CONFIG.roadWidth;
+    const clampedX = Math.max(minX, Math.min(maxX, gameX));
+
+    onDrag?.(clampedX, true);
+  };
+
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     e.preventDefault(); // Prevent default touch behavior
-    onTouchLeft?.(false);
-    onTouchRight?.(false);
+
+    if (isDraggingRef.current && pointerIdRef.current === e.pointerId) {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        canvas.releasePointerCapture(e.pointerId);
+      }
+      isDraggingRef.current = false;
+      pointerIdRef.current = null;
+      onDrag?.(undefined, false);
+    }
+
+    // 保留旧的左右控制作为桌面端备用
+    if (!onDrag) {
+      onTouchLeft?.(false);
+      onTouchRight?.(false);
+    }
+  };
+
+  const handlePointerCancel = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    handlePointerUp(e);
   };
 
   return (
@@ -854,7 +916,9 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
       height={GAME_CONFIG.canvasHeight}
       className="border-0 md:border-4 border-gray-700 md:rounded-lg shadow-2xl touch-none select-none w-full h-full md:w-auto md:h-auto"
       onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
       onPointerLeave={handlePointerUp}
       style={{ touchAction: 'none', objectFit: 'contain' }}
     />

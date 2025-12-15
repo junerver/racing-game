@@ -201,6 +201,17 @@ export default function GameStatisticsModal({ statistics, onClose }: GameStatist
                                 {sortedPowerUps.map((stat) => {
                                     const config = POWERUP_CONFIG[stat.type];
                                     const total = stat.collected + stat.comboCrafted;
+
+                                    // 为特定道具类型设置颜色
+                                    const getIconColor = (type: string) => {
+                                        if (type === 'coin' || type === 'double_coin') return 'text-yellow-400';
+                                        if (type === 'score_multiplier') return 'text-purple-400';
+                                        if (type === 'heart' || type === 'double_heart') return 'text-red-500';
+                                        return '';
+                                    };
+
+                                    const iconColorClass = getIconColor(stat.type);
+
                                     return (
                                         <div
                                             key={stat.type}
@@ -208,7 +219,7 @@ export default function GameStatisticsModal({ statistics, onClose }: GameStatist
                                         >
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-3">
-                                                    <span className="text-2xl">{config.icon}</span>
+                                                    <span className={`text-2xl ${iconColorClass}`}>{config.icon}</span>
                                                     <div>
                                                         <div className="text-white font-semibold">{config.name}</div>
                                                         <div className="text-xs text-gray-400">{config.description}</div>
