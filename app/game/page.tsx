@@ -90,11 +90,14 @@ export default function GamePage() {
       } else if (e.key === 'ArrowRight') {
         engine.setInput({ right: true });
       } else if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault(); // Prevent page scroll
         const state = engine.getState();
         if (state.status === 'idle' || state.status === 'game_over') {
           engine.reset();
           engine.start();
           incrementGamesPlayed();
+        } else if (state.status === 'playing') {
+          engine.pause();
         } else if (state.status === 'paused') {
           engine.resume();
         }

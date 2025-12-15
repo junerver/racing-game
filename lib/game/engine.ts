@@ -84,6 +84,14 @@ export class GameEngine {
     this.lastBossDistance = -1;
   }
 
+  // Helper function to safely add coins with cap
+  private addCoinsWithCap(amount: number): void {
+    const currentCoins = this.state.coins;
+    const newAmount = Math.min(currentCoins + amount, 9999);
+    this.state.coins = newAmount;
+    addCoins(amount); // This function already has the cap
+  }
+
   private createInitialState(): GameState {
     const slotMachine = createSlotMachineState();
     slotMachine.failureCount = getSlotMachineFailureCount();
@@ -411,8 +419,7 @@ export class GameEngine {
       !this.state.activePowerUps.some(p => p.type === 'golden_bell');
     if (goldenBellExpired && !this.state.goldenBellCollided && this.state.goldenBellCoinValue > 0) {
       const reward = this.state.goldenBellCoinValue * 2;
-      this.state.coins += reward;
-      addCoins(reward);
+      this.addCoinsWithCap(reward);
       this.state.goldenBellCoinValue = 0;
     }
     if (goldenBellExpired) {
@@ -730,9 +737,8 @@ export class GameEngine {
 
           // Award coins for destroyed obstacles
           const coinReward = MACHINE_GUN_COIN_REWARD;
-          this.state.coins += coinReward;
+          this.addCoinsWithCap(coinReward);
           this.state.statistics.totalCoinsCollected += coinReward;
-          addCoins(coinReward);
 
           break;
         }
@@ -749,8 +755,7 @@ export class GameEngine {
           const comboType = checkComboMatch(powerUp.type, this.state.activePowerUps);
 
           if (comboType === 'double_coin') {
-            this.state.coins += coinValue * 2;
-            addCoins(coinValue * 2);
+            this.addCoinsWithCap(coinValue * 2);
             this.state.statistics.totalCoinsCollected += coinValue * 2;
             this.state.activePowerUps.pop();
             this.trackPowerUpCollection(comboType, true);
@@ -763,8 +768,7 @@ export class GameEngine {
             this.state.activePowerUps.push(activeComboPowerUp);
             this.trackPowerUpCollection(comboType, true);
           } else {
-            this.state.coins += coinValue;
-            addCoins(coinValue);
+            this.addCoinsWithCap(coinValue);
             this.state.statistics.totalCoinsCollected += coinValue;
             this.state.slotMachine = addCoinToSlotMachine(this.state.slotMachine, coinValue);
             this.trackPowerUpCollection(powerUp.type, false);
@@ -990,9 +994,14 @@ export class GameEngine {
     this.state.statistics.totalObstaclesDestroyed = this.state.destroyedObstacleCount;
 
     const coinReward = MACHINE_GUN_COIN_REWARD * obstacleCount;
-    this.state.coins += coinReward;
+    this.addCoinsWithCap(coinReward);
     this.state.statistics.totalCoinsCollected += coinReward;
-    addCoins(coinReward);
+
+    // Damage boss if in boss battle (3-5 damage per strike)
+    if (this.state.bossBattle.active && this.state.bossBattle.boss) {
+      const bossDamage = 3 + Math.floor(Math.random() * 3); // 3-5 damage
+      this.state.bossBattle.boss = damageBoss(this.state.bossBattle.boss, bossDamage);
+    }
   }
 
   // Death star beam handler
@@ -1006,9 +1015,8 @@ export class GameEngine {
         this.state.obstacles.splice(i, 1);
         this.state.destroyedObstacleCount++;
         this.state.statistics.totalObstaclesDestroyed = this.state.destroyedObstacleCount;
-        this.state.coins += MACHINE_GUN_COIN_REWARD;
+        this.addCoinsWithCap(MACHINE_GUN_COIN_REWARD);
         this.state.statistics.totalCoinsCollected += MACHINE_GUN_COIN_REWARD;
-        addCoins(MACHINE_GUN_COIN_REWARD);
       }
     }
   }
@@ -1143,8 +1151,7 @@ export class GameEngine {
     if (defeated) {
       const bossNumber = getBossNumber(this.state.distance);
       const coinReward = 500 + bossNumber * 200;
-      this.state.coins += coinReward;
-      addCoins(coinReward);
+      this.addCoinsWithCap(coinReward);
 
       // Heal one heart
       this.state.hearts = Math.min(this.state.hearts + 1, 3);
@@ -1277,11 +1284,12 @@ export class GameEngine {
         }
 
         if (reward > 0) {
-          this.state.coins += reward;
-          addCoins(reward);
+          this.addCoinsWithCap(reward);
         } else if (reward < 0) {
-          this.state.coins = Math.max(0, this.state.coins + reward);
-          spendCoins(-reward);
+          const currentCoins = getCoins();
+          const newAmount = Math.max(0, currentCoins + reward);
+          spendCoins(currentCoins - newAmount);
+          this.state.coins = getCoins();
         }
 
         this.state.slotMachine = completeSlotMachineSpin(this.state.slotMachine);
