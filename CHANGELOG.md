@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [性能优化] - 2025-12-15
+
+### Performance 🚀
+
+- **渲染性能优化模块** ([`lib/game/performance.ts`](lib/game/performance.ts))
+  - 实现对象池（ObjectPool）减少垃圾回收压力
+  - 添加性能监控器（PerformanceMonitor）实时监控FPS和帧时间
+  - 实现渲染批处理器（RenderBatcher）减少重复的渲染状态设置
+
+- **渲染优化器** ([`lib/game/renderOptimizer.ts`](lib/game/renderOptimizer.ts))
+  - 智能渲染判断，避免不必要的完整重绘
+  - 可见性剔除，只渲染屏幕内的对象
+  - 自适应渲染质量，根据FPS动态调整特效（FPS<30禁用所有特效，30-45中等效果，>45全特效）
+
+- **性能配置项**
+  - 可配置的阴影和发光效果开关
+  - 限制最大粒子数量（默认50）
+  - 优化碰撞检测半径（只检测车辆附近200px）
+  - 单帧最多更新3次，防止卡顿时的死亡螺旋
+
+### 预期效果
+- 后期游戏帧率提升 20-40%
+- 减少视觉疲劳和丢帧感
+- 降低内存占用和GC暂停时间
+- 提供更流畅的60FPS游戏体验
+
 ## [Unreleased] - 2024-12-13
 
 ### Added
