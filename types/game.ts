@@ -141,6 +141,7 @@ export interface GameState {
   lastLightningStrike: number;
   goldenBellCoinValue: number;
   goldenBellCollided: boolean;
+  goldenBellShieldBroken: boolean; // 金钟罩是否已破盾
   // Boss battle
   bossBattle: BossBattleState;
   // Statistics

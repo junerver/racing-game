@@ -634,25 +634,48 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
         ctx.shadowBlur = 0;
       }
 
-      // Draw golden bell shield
+      // Draw golden bell shield (or invincibility shield if broken)
       if (hasGoldenBell) {
         const time = Date.now();
-        const pulse = 1 + Math.sin(time / 150) * 0.15;
+        
+        // 如果金钟罩已破盾，显示无敌护盾效果
+        if (gameState.goldenBellShieldBroken) {
+          const rotation = (time / 1000) % (Math.PI * 2);
 
-        ctx.strokeStyle = '#fbbf24';
-        ctx.lineWidth = 3;
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = '#fbbf24';
-        ctx.beginPath();
-        ctx.arc(
-          vehicle.x + vehicle.width / 2,
-          vehicle.y + vehicle.height / 2,
-          50 * pulse,
-          0,
-          Math.PI * 2
-        );
-        ctx.stroke();
-        ctx.shadowBlur = 0;
+          ctx.strokeStyle = '#8b5cf6';
+          ctx.lineWidth = 3;
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = '#8b5cf6';
+
+          // Rotating shield effect (same as invincibility)
+          for (let i = 0; i < 6; i++) {
+            const angle = rotation + (i * Math.PI / 3);
+            const x = vehicle.x + vehicle.width / 2 + Math.cos(angle) * 50;
+            const y = vehicle.y + vehicle.height / 2 + Math.sin(angle) * 50;
+            ctx.beginPath();
+            ctx.arc(x, y, 5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.shadowBlur = 0;
+        } else {
+          // 未破盾时显示金钟罩效果
+          const pulse = 1 + Math.sin(time / 150) * 0.15;
+
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 3;
+          ctx.shadowBlur = 20;
+          ctx.shadowColor = '#fbbf24';
+          ctx.beginPath();
+          ctx.arc(
+            vehicle.x + vehicle.width / 2,
+            vehicle.y + vehicle.height / 2,
+            50 * pulse,
+            0,
+            Math.PI * 2
+          );
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+        }
       }
 
       // Draw turbo overload glow

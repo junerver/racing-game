@@ -111,6 +111,7 @@ export class GameEngine {
       lastLightningStrike: 0,
       goldenBellCoinValue: 0,
       goldenBellCollided: false,
+      goldenBellShieldBroken: false,
       bossBattle: createBossBattleState(),
       statistics: {
         powerUpStats: [],
@@ -416,6 +417,7 @@ export class GameEngine {
     }
     if (goldenBellExpired) {
       this.state.goldenBellCollided = false;
+      this.state.goldenBellShieldBroken = false;
       this.state.goldenBellCoinValue = 0;
     }
 
@@ -706,10 +708,11 @@ export class GameEngine {
         }
       }
     } else if (isPowerUpActive(this.state.activePowerUps, 'golden_bell') && !this.state.isRecovering) {
-      // Golden bell: mark collision
+      // Golden bell: mark collision and break shield
       for (const obstacle of this.state.obstacles) {
         if (checkVehicleObstacleCollision(this.state.vehicle, obstacle)) {
           this.state.goldenBellCollided = true;
+          this.state.goldenBellShieldBroken = true; // 破盾效果
           break;
         }
       }
@@ -1099,6 +1102,10 @@ export class GameEngine {
             this.gameOver();
             return;
           }
+        } else if (isPowerUpActive(this.state.activePowerUps, 'golden_bell') && !this.state.isRecovering) {
+          // Golden bell: mark collision and break shield in boss battle too
+          this.state.goldenBellCollided = true;
+          this.state.goldenBellShieldBroken = true;
         }
       }
     }
