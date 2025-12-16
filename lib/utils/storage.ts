@@ -108,6 +108,7 @@ export const saveSelectedVehicle = (vehicle: VehicleConfig): void => {
     id: vehicle.id,
     name: vehicle.name,
     color: vehicle.color,
+    type: vehicle.type, // 保存车辆类型
     engineLevel: vehicle.engineLevel,
     tireLevel: vehicle.tireLevel,
   };
@@ -118,6 +119,18 @@ export const saveSelectedVehicle = (vehicle: VehicleConfig): void => {
 export const loadSelectedVehicle = (): VehicleConfig => {
   const save = loadGameSave();
   if (save.selectedVehicle) {
+    // 数据迁移：如果旧数据没有 type 字段，根据 id 推断类型
+    if (!save.selectedVehicle.type) {
+      const vehicleId = save.selectedVehicle.id;
+      // 根据 id 推断车辆类型
+      const typeMap: Record<string, import('@/types/game').VehicleType> = {
+        'sports': 'sports',
+        'sedan': 'sedan',
+        'suv': 'suv',
+        'pickup': 'pickup',
+      };
+      save.selectedVehicle.type = typeMap[vehicleId] || 'sedan'; // 默认为 sedan
+    }
     return save.selectedVehicle;
   }
   return VEHICLE_PRESETS[0]; // Default to first preset

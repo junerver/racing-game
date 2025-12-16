@@ -23,6 +23,7 @@ import {
   COLLISION_RECOVERY_TIME,
   COLLISION_KNOCKBACK,
   POWERUP_SIZE,
+  getVehicleAbilities,
 } from './constants';
 import {
   checkVehicleObstacleCollision,
@@ -196,6 +197,10 @@ export class GameEngine {
     const slotMachine = createSlotMachineState();
     slotMachine.failureCount = getSlotMachineFailureCount();
 
+    // 根据车辆类型设置初始耐久度
+    const vehicleAbilities = this.state.vehicle ? getVehicleAbilities(this.state.vehicle.config.type) : null;
+    const initialHearts = vehicleAbilities?.baseHearts ?? 3;
+
     this.state.status = 'playing';
     this.state.distance = 0;
     this.state.score = 0;
@@ -205,7 +210,7 @@ export class GameEngine {
     this.state.bullets = [];
     this.state.currentSpeed = SPEED.initial;
     this.state.coins = 0;
-    this.state.hearts = 3;
+    this.state.hearts = initialHearts;
     this.state.isRecovering = false;
     this.state.recoveryEndTime = 0;
     this.state.slotMachine = slotMachine;
@@ -834,9 +839,13 @@ export class GameEngine {
         this.state.hearts--;
         this.state.currentSpeed = 0;
 
-        // Set recovery time (invincibility period)
+        // Set recovery time (invincibility period) - 应用车辆恢复时间加成
+        const vehicleAbilities = this.state.vehicle ? getVehicleAbilities(this.state.vehicle.config.type) : null;
+        const recoveryMultiplier = vehicleAbilities?.recoveryTimeMultiplier ?? 1.0;
+        const actualRecoveryTime = COLLISION_RECOVERY_TIME * recoveryMultiplier;
+
         this.state.isRecovering = true;
-        this.state.recoveryEndTime = currentTime + COLLISION_RECOVERY_TIME;
+        this.state.recoveryEndTime = currentTime + actualRecoveryTime;
 
         // Knockback effect: move vehicle back
         this.state.vehicle.y = Math.min(
@@ -927,32 +936,47 @@ export class GameEngine {
           const comboType = checkComboMatch(powerUp.type, this.state.activePowerUps);
 
           if (comboType === 'double_coin') {
-            this.addCoinsWithCap(coinValue * 2);
-            this.state.statistics.totalCoinsCollected += coinValue * 2;
+            // 应用车辆金币加成
+            const vehicleAbilities = this.state.vehicle ? getVehicleAbilities(this.state.vehicle.config.type) : null;
+            const coinBonus = vehicleAbilities?.coinBonus ?? 1.0;
+            const finalCoinValue = Math.floor(coinValue * 2 * coinBonus);
+            this.addCoinsWithCap(finalCoinValue);
+            this.state.statistics.totalCoinsCollected += finalCoinValue;
             this.state.activePowerUps.pop();
             this.trackPowerUpCollection(comboType, true);
           } else if (comboType === 'golden_bell') {
             // Golden bell: consume coin, don't add to balance or slot machine
-            this.state.goldenBellCoinValue = coinValue;
+            // 应用车辆金币加成到金钟罩返还
+            const vehicleAbilities = this.state.vehicle ? getVehicleAbilities(this.state.vehicle.config.type) : null;
+            const coinBonus = vehicleAbilities?.coinBonus ?? 1.0;
+            this.state.goldenBellCoinValue = Math.floor(coinValue * coinBonus);
             this.state.goldenBellCollided = false;
             this.state.activePowerUps.pop();
             const activeComboPowerUp = activateComboPowerUp(comboType, performance.now());
             this.state.activePowerUps.push(activeComboPowerUp);
             this.trackPowerUpCollection(comboType, true);
           } else {
-            this.addCoinsWithCap(coinValue);
-            this.state.statistics.totalCoinsCollected += coinValue;
-            this.state.slotMachine = addCoinToSlotMachine(this.state.slotMachine, coinValue);
+            // 应用车辆金币加成
+            const vehicleAbilities = this.state.vehicle ? getVehicleAbilities(this.state.vehicle.config.type) : null;
+            const coinBonus = vehicleAbilities?.coinBonus ?? 1.0;
+            const finalCoinValue = Math.floor(coinValue * coinBonus);
+            this.addCoinsWithCap(finalCoinValue);
+            this.state.statistics.totalCoinsCollected += finalCoinValue;
+            this.state.slotMachine = addCoinToSlotMachine(this.state.slotMachine, coinValue); // 老虎机使用原始值
             this.trackPowerUpCollection(powerUp.type, false);
           }
         } else if (powerUp.type === 'heart') {
+          // 获取车辆最大耐久度
+          const vehicleAbilities = this.state.vehicle ? getVehicleAbilities(this.state.vehicle.config.type) : null;
+          const maxHearts = vehicleAbilities?.baseHearts ?? 3;
+
           const comboType = checkComboMatch(powerUp.type, this.state.activePowerUps);
           if (comboType === 'double_heart') {
-            this.state.hearts = Math.min(this.state.hearts + 2, 3);
+            this.state.hearts = Math.min(this.state.hearts + 2, maxHearts);
             this.state.activePowerUps.pop();
             this.trackPowerUpCollection(comboType, true);
           } else {
-            this.state.hearts = Math.min(this.state.hearts + 1, 3);
+            this.state.hearts = Math.min(this.state.hearts + 1, maxHearts);
             this.trackPowerUpCollection(powerUp.type, false);
           }
         } else {
@@ -969,18 +993,36 @@ export class GameEngine {
             }
           } else {
             const config = POWERUP_CONFIG[powerUp.type];
-            const durationMultiplier = this.state.vehicle?.stats.powerUpDurationMultiplier ?? 1.0;
+            const baseDurationMultiplier = this.state.vehicle?.stats.powerUpDurationMultiplier ?? 1.0;
+
+            // 应用车辆特殊能力加成
+            const vehicleAbilities = this.state.vehicle ? getVehicleAbilities(this.state.vehicle.config.type) : null;
+            let abilityBonus = 1.0;
+
+            // 速度类道具加成
+            const speedPowerUps: PowerUpType[] = ['speed_boost', 'nitro_boost', 'rocket_fuel', 'turbo_overload', 'hyper_speed', 'supernova_burst'];
+            if (speedPowerUps.includes(powerUp.type)) {
+              abilityBonus = vehicleAbilities?.speedPowerUpBonus ?? 1.0;
+            }
+
+            // 武器类道具加成
+            const weaponPowerUps: PowerUpType[] = ['machine_gun', 'quad_machine_gun', 'rotating_shield_gun', 'storm_lightning', 'death_star_beam'];
+            if (weaponPowerUps.includes(powerUp.type)) {
+              abilityBonus = vehicleAbilities?.weaponPowerUpBonus ?? 1.0;
+            }
+
+            const finalDurationMultiplier = baseDurationMultiplier * abilityBonus;
             const existingPowerUp = this.state.activePowerUps.find((p) => p.type === powerUp.type);
 
             if (existingPowerUp) {
-              existingPowerUp.remainingTime += config.duration * durationMultiplier;
+              existingPowerUp.remainingTime += config.duration * finalDurationMultiplier;
               existingPowerUp.totalDuration = existingPowerUp.remainingTime;
             } else {
               this.state.activePowerUps.push({
                 type: powerUp.type,
-                remainingTime: config.duration * durationMultiplier,
+                remainingTime: config.duration * finalDurationMultiplier,
                 startTime: performance.now(),
-                totalDuration: config.duration * durationMultiplier,
+                totalDuration: config.duration * finalDurationMultiplier,
               });
             }
             this.trackPowerUpCollection(powerUp.type, false);
@@ -1328,8 +1370,10 @@ export class GameEngine {
       const coinReward = 500 + bossNumber * 200;
       this.addCoinsWithCap(coinReward);
 
-      // Heal one heart
-      this.state.hearts = Math.min(this.state.hearts + 1, 3);
+      // Heal one heart - 使用车辆最大耐久度
+      const vehicleAbilities = this.state.vehicle ? getVehicleAbilities(this.state.vehicle.config.type) : null;
+      const maxHearts = vehicleAbilities?.baseHearts ?? 3;
+      this.state.hearts = Math.min(this.state.hearts + 1, maxHearts);
 
       // Spawn reward power-up wave
       this.spawnBossRewardWave();
@@ -1497,3 +1541,4 @@ export const resetGameEngine = (): void => {
   }
   gameEngineInstance = null;
 };
+

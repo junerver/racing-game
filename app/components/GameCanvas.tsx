@@ -26,7 +26,334 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
   const pointerIdRef = useRef<number | null>(null);
   const centerClickedRef = useRef(false);
 
-  // Draw a vehicle (car shape)
+  // 辅助函数：调整颜色亮度
+  const adjustBrightness = (color: string, amount: number): string => {
+    const hex = color.replace('#', '');
+    const r = Math.max(0, Math.min(255, parseInt(hex.substr(0, 2), 16) + amount));
+    const g = Math.max(0, Math.min(255, parseInt(hex.substr(2, 2), 16) + amount));
+    const b = Math.max(0, Math.min(255, parseInt(hex.substr(4, 2), 16) + amount));
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+  };
+
+  // 🏎️ Sports Car - 流线型跑车（高速、灵敏）
+  const drawSportsCar = useCallback((ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, color: string) => {
+    // 轮子 - 在车身外侧
+    ctx.fillStyle = '#1f2937';
+    ctx.fillRect(x - 4, y + height * 0.12, 8, height * 0.12);
+    ctx.fillRect(x + width - 4, y + height * 0.12, 8, height * 0.12);
+    ctx.fillRect(x - 4, y + height * 0.76, 8, height * 0.12);
+    ctx.fillRect(x + width - 4, y + height * 0.76, 8, height * 0.12);
+
+    // 车身渐变
+    const gradient = ctx.createLinearGradient(x, y, x + width, y);
+    gradient.addColorStop(0, adjustBrightness(color, -20));
+    gradient.addColorStop(0.5, adjustBrightness(color, 30));
+    gradient.addColorStop(1, adjustBrightness(color, -20));
+
+    // 主车身 - 流线型
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.moveTo(x + width * 0.2, y + height * 0.05);
+    ctx.lineTo(x + width * 0.8, y + height * 0.05);
+    ctx.quadraticCurveTo(x + width, y + height * 0.1, x + width, y + height * 0.3);
+    ctx.lineTo(x + width, y + height * 0.7);
+    ctx.quadraticCurveTo(x + width, y + height * 0.9, x + width * 0.8, y + height * 0.95);
+    ctx.lineTo(x + width * 0.2, y + height * 0.95);
+    ctx.quadraticCurveTo(x, y + height * 0.9, x, y + height * 0.7);
+    ctx.lineTo(x, y + height * 0.3);
+    ctx.quadraticCurveTo(x, y + height * 0.1, x + width * 0.2, y + height * 0.05);
+    ctx.closePath();
+    ctx.fill();
+
+    // 车顶/驾驶舱
+    ctx.fillStyle = '#1a1a2e';
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.15, y + height * 0.28, width * 0.7, height * 0.38, 5);
+    ctx.fill();
+
+    // 挡风玻璃
+    ctx.fillStyle = '#38bdf8';
+    ctx.globalAlpha = 0.8;
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.2, y + height * 0.30, width * 0.6, height * 0.14, 3);
+    ctx.fill();
+    // 后窗
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.2, y + height * 0.50, width * 0.6, height * 0.12, 3);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // LED大灯
+    ctx.fillStyle = '#fef08a';
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = '#fef08a';
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.15, y + height * 0.07, width * 0.25, height * 0.04, 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.6, y + height * 0.07, width * 0.25, height * 0.04, 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // 尾灯
+    ctx.fillStyle = '#ef4444';
+    ctx.shadowBlur = 5;
+    ctx.shadowColor = '#ef4444';
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.15, y + height * 0.88, width * 0.2, height * 0.04, 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.65, y + height * 0.88, width * 0.2, height * 0.04, 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // 赛车条纹
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.4;
+    ctx.beginPath();
+    ctx.moveTo(x + width * 0.42, y + height * 0.08);
+    ctx.lineTo(x + width * 0.42, y + height * 0.92);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x + width * 0.58, y + height * 0.08);
+    ctx.lineTo(x + width * 0.58, y + height * 0.92);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // 速度标志
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = 'bold 8px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('⚡', x + width * 0.5, y + height * 0.75);
+  }, []);
+
+  // 🚗 Sedan - 经典轿车（均衡、金币加成）
+  const drawSedan = useCallback((ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, color: string) => {
+    // 轮子
+    ctx.fillStyle = '#1f2937';
+    ctx.fillRect(x - 4, y + height * 0.12, 8, height * 0.12);
+    ctx.fillRect(x + width - 4, y + height * 0.12, 8, height * 0.12);
+    ctx.fillRect(x - 4, y + height * 0.76, 8, height * 0.12);
+    ctx.fillRect(x + width - 4, y + height * 0.76, 8, height * 0.12);
+
+    // 车身渐变
+    const gradient = ctx.createLinearGradient(x, y, x, y + height);
+    gradient.addColorStop(0, adjustBrightness(color, 20));
+    gradient.addColorStop(1, adjustBrightness(color, -20));
+
+    // 主车身
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.roundRect(x, y + height * 0.08, width, height * 0.84, 6);
+    ctx.fill();
+
+    // 车顶
+    ctx.fillStyle = '#1e3a5f';
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.1, y + height * 0.22, width * 0.8, height * 0.45, 5);
+    ctx.fill();
+
+    // 挡风玻璃
+    ctx.fillStyle = '#60a5fa';
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.15, y + height * 0.25, width * 0.7, height * 0.15, 3);
+    ctx.fill();
+    // 侧窗
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.15, y + height * 0.42, width * 0.3, height * 0.12, 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.55, y + height * 0.42, width * 0.3, height * 0.12, 2);
+    ctx.fill();
+    // 后窗
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.15, y + height * 0.56, width * 0.7, height * 0.08, 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // 大灯
+    ctx.fillStyle = '#fef08a';
+    ctx.shadowBlur = 6;
+    ctx.shadowColor = '#fef08a';
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.1, y + height * 0.10, width * 0.25, height * 0.05, 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.65, y + height * 0.10, width * 0.25, height * 0.05, 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // 尾灯
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.1, y + height * 0.85, width * 0.2, height * 0.04, 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.7, y + height * 0.85, width * 0.2, height * 0.04, 2);
+    ctx.fill();
+
+    // 金币装饰（Sedan特色 - 金币加成）
+    ctx.fillStyle = '#fbbf24';
+    ctx.beginPath();
+    ctx.arc(x + width * 0.5, y + height * 0.75, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#92400e';
+    ctx.font = 'bold 8px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('$', x + width * 0.5, y + height * 0.75);
+  }, []);
+
+  // 🚙 SUV - 越野车（机枪加成、稳定）
+  const drawSUV = useCallback((ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, color: string) => {
+    // 大轮子
+    ctx.fillStyle = '#1f2937';
+    ctx.fillRect(x - 5, y + height * 0.10, 10, height * 0.14);
+    ctx.fillRect(x + width - 5, y + height * 0.10, 10, height * 0.14);
+    ctx.fillRect(x - 5, y + height * 0.76, 10, height * 0.14);
+    ctx.fillRect(x + width - 5, y + height * 0.76, 10, height * 0.14);
+
+    // 车身渐变
+    const gradient = ctx.createLinearGradient(x, y, x, y + height);
+    gradient.addColorStop(0, adjustBrightness(color, 15));
+    gradient.addColorStop(1, adjustBrightness(color, -15));
+
+    // 主车身 - 高大方正
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.roundRect(x, y + height * 0.05, width, height * 0.90, 5);
+    ctx.fill();
+
+    // 车顶
+    ctx.fillStyle = '#1e3a5f';
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.08, y + height * 0.15, width * 0.84, height * 0.52, 4);
+    ctx.fill();
+
+    // 挡风玻璃
+    ctx.fillStyle = '#60a5fa';
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.12, y + height * 0.18, width * 0.76, height * 0.18, 3);
+    ctx.fill();
+    // 侧窗
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.12, y + height * 0.38, width * 0.35, height * 0.15, 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.53, y + height * 0.38, width * 0.35, height * 0.15, 2);
+    ctx.fill();
+    // 后窗
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.12, y + height * 0.55, width * 0.76, height * 0.08, 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // 大灯
+    ctx.fillStyle = '#fef08a';
+    ctx.shadowBlur = 6;
+    ctx.shadowColor = '#fef08a';
+    ctx.fillRect(x + width * 0.08, y + height * 0.07, width * 0.2, height * 0.05);
+    ctx.fillRect(x + width * 0.72, y + height * 0.07, width * 0.2, height * 0.05);
+    ctx.shadowBlur = 0;
+
+    // 尾灯
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(x + width * 0.08, y + height * 0.88, width * 0.18, height * 0.04);
+    ctx.fillRect(x + width * 0.74, y + height * 0.88, width * 0.18, height * 0.04);
+
+    // 车顶行李架
+    ctx.fillStyle = '#4b5563';
+    ctx.fillRect(x + width * 0.2, y + height * 0.12, width * 0.6, height * 0.02);
+
+    // 机枪装饰（SUV特色 - 机枪加成）
+    ctx.fillStyle = '#6b7280';
+    ctx.fillRect(x + width * 0.45, y + height * 0.70, width * 0.1, height * 0.12);
+    ctx.fillStyle = '#374151';
+    ctx.fillRect(x + width * 0.43, y + height * 0.68, width * 0.14, height * 0.04);
+    ctx.fillStyle = '#ef4444';
+    ctx.font = '8px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🔫', x + width * 0.5, y + height * 0.85);
+  }, []);
+
+  // 🛻 Pickup - 皮卡（高耐久、低速）
+  const drawPickup = useCallback((ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, color: string) => {
+    // 大轮子
+    ctx.fillStyle = '#1f2937';
+    ctx.fillRect(x - 5, y + height * 0.08, 10, height * 0.14);
+    ctx.fillRect(x + width - 5, y + height * 0.08, 10, height * 0.14);
+    ctx.fillRect(x - 5, y + height * 0.78, 10, height * 0.14);
+    ctx.fillRect(x + width - 5, y + height * 0.78, 10, height * 0.14);
+
+    // 车身渐变
+    const gradient = ctx.createLinearGradient(x, y, x, y + height);
+    gradient.addColorStop(0, adjustBrightness(color, 10));
+    gradient.addColorStop(1, adjustBrightness(color, -20));
+
+    // 驾驶舱
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.roundRect(x, y + height * 0.05, width, height * 0.45, 5);
+    ctx.fill();
+
+    // 货箱
+    ctx.fillStyle = adjustBrightness(color, -15);
+    ctx.beginPath();
+    ctx.roundRect(x, y + height * 0.52, width, height * 0.43, 4);
+    ctx.fill();
+
+    // 货箱内部
+    ctx.fillStyle = '#374151';
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.08, y + height * 0.56, width * 0.84, height * 0.35, 3);
+    ctx.fill();
+
+    // 车顶
+    ctx.fillStyle = '#1e3a5f';
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.08, y + height * 0.12, width * 0.84, height * 0.32, 4);
+    ctx.fill();
+
+    // 挡风玻璃
+    ctx.fillStyle = '#60a5fa';
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.12, y + height * 0.15, width * 0.76, height * 0.12, 3);
+    ctx.fill();
+    // 侧窗
+    ctx.beginPath();
+    ctx.roundRect(x + width * 0.12, y + height * 0.29, width * 0.76, height * 0.12, 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // 大灯
+    ctx.fillStyle = '#fef08a';
+    ctx.shadowBlur = 6;
+    ctx.shadowColor = '#fef08a';
+    ctx.fillRect(x + width * 0.08, y + height * 0.06, width * 0.2, height * 0.04);
+    ctx.fillRect(x + width * 0.72, y + height * 0.06, width * 0.2, height * 0.04);
+    ctx.shadowBlur = 0;
+
+    // 尾灯
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(x + width * 0.08, y + height * 0.90, width * 0.18, height * 0.04);
+    ctx.fillRect(x + width * 0.74, y + height * 0.90, width * 0.18, height * 0.04);
+
+    // 保险杠
+    ctx.fillStyle = '#6b7280';
+    ctx.fillRect(x + width * 0.1, y + height * 0.02, width * 0.8, height * 0.025);
+
+    // 爱心装饰（Pickup特色 - 高耐久）
+    ctx.fillStyle = '#ef4444';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('❤️', x + width * 0.5, y + height * 0.72);
+  }, []);
+
+  // Draw a vehicle based on type
   const drawVehicle = useCallback((
     ctx: CanvasRenderingContext2D,
     x: number,
@@ -34,56 +361,64 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
     width: number,
     height: number,
     color: string,
-    isPlayer: boolean
+    isPlayer: boolean,
+    vehicleType?: import('@/types/game').VehicleType
   ) => {
-    // Main body
+    if (isPlayer && vehicleType) {
+      switch (vehicleType) {
+        case 'sports':
+          drawSportsCar(ctx, x, y, width, height, color);
+          return;
+        case 'sedan':
+          drawSedan(ctx, x, y, width, height, color);
+          return;
+        case 'suv':
+          drawSUV(ctx, x, y, width, height, color);
+          return;
+        case 'pickup':
+          drawPickup(ctx, x, y, width, height, color);
+          return;
+      }
+    }
+
+    // 默认车辆绘制（障碍物）- 简化版
+    // 轮子
+    ctx.fillStyle = '#1f2937';
+    ctx.fillRect(x - 3, y + height * 0.15, 6, height * 0.1);
+    ctx.fillRect(x + width - 3, y + height * 0.15, 6, height * 0.1);
+    ctx.fillRect(x - 3, y + height * 0.75, 6, height * 0.1);
+    ctx.fillRect(x + width - 3, y + height * 0.75, 6, height * 0.1);
+
+    // 车身
     ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.roundRect(x, y + height * 0.15, width, height * 0.7, 5);
+    ctx.roundRect(x, y + height * 0.1, width, height * 0.8, 5);
     ctx.fill();
 
-    // Top (cabin)
-    ctx.fillStyle = isPlayer ? '#1e3a5f' : '#374151';
+    // 车顶
+    ctx.fillStyle = '#374151';
     ctx.beginPath();
-    ctx.roundRect(x + width * 0.1, y + height * 0.25, width * 0.8, height * 0.35, 3);
+    ctx.roundRect(x + width * 0.1, y + height * 0.22, width * 0.8, height * 0.4, 3);
     ctx.fill();
 
-    // Windows
+    // 车窗
     ctx.fillStyle = '#60a5fa';
+    ctx.globalAlpha = 0.8;
     ctx.beginPath();
-    ctx.roundRect(x + width * 0.15, y + height * 0.28, width * 0.7, height * 0.15, 2);
+    ctx.roundRect(x + width * 0.15, y + height * 0.25, width * 0.7, height * 0.15, 2);
     ctx.fill();
     ctx.beginPath();
     ctx.roundRect(x + width * 0.15, y + height * 0.45, width * 0.7, height * 0.12, 2);
     ctx.fill();
+    ctx.globalAlpha = 1;
 
-    // Wheels
-    ctx.fillStyle = '#1f2937';
-    const wheelWidth = width * 0.2;
-    const wheelHeight = height * 0.15;
-    // Front wheels
-    ctx.fillRect(x - 3, y + height * 0.2, wheelWidth, wheelHeight);
-    ctx.fillRect(x + width - wheelWidth + 3, y + height * 0.2, wheelWidth, wheelHeight);
-    // Rear wheels
-    ctx.fillRect(x - 3, y + height * 0.65, wheelWidth, wheelHeight);
-    ctx.fillRect(x + width - wheelWidth + 3, y + height * 0.65, wheelWidth, wheelHeight);
-
-    // Headlights (only for player going up)
-    if (isPlayer) {
-      ctx.fillStyle = '#fef08a';
-      ctx.beginPath();
-      ctx.arc(x + width * 0.25, y + height * 0.1, 5, 0, Math.PI * 2);
-      ctx.arc(x + width * 0.75, y + height * 0.1, 5, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      // Taillights for obstacles
-      ctx.fillStyle = '#ef4444';
-      ctx.beginPath();
-      ctx.arc(x + width * 0.25, y + height * 0.9, 4, 0, Math.PI * 2);
-      ctx.arc(x + width * 0.75, y + height * 0.9, 4, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }, []);
+    // 尾灯
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.arc(x + width * 0.25, y + height * 0.85, 4, 0, Math.PI * 2);
+    ctx.arc(x + width * 0.75, y + height * 0.85, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }, [drawSportsCar, drawSedan, drawSUV, drawPickup]);
 
   // Draw boss with different shapes based on boss.shape property
   const drawBoss = useCallback((
@@ -641,7 +976,7 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
       // Draw golden bell shield (or invincibility shield if broken)
       if (hasGoldenBell) {
         const time = Date.now();
-        
+
         // 如果金钟罩已破盾，显示无敌护盾效果
         if (gameState.goldenBellShieldBroken) {
           const rotation = (time / 1000) % (Math.PI * 2);
@@ -707,11 +1042,11 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
       if (hasHyperSpeed) {
         const time = Date.now();
         const trailLength = 8;
-        
+
         for (let i = 0; i < trailLength; i++) {
           const alpha = (1 - i / trailLength) * 0.6;
           const offset = i * 8;
-          
+
           ctx.globalAlpha = alpha;
           ctx.shadowBlur = 15;
           ctx.shadowColor = '#fbbf24';
@@ -732,12 +1067,12 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
       if (hasSuperMagnet) {
         const time = Date.now();
         const pulse = Math.sin(time / 150) * 0.2 + 0.8;
-        
+
         // Draw expanding circles
         for (let i = 0; i < 3; i++) {
           const radius = 80 + i * 40 + (time / 20) % 40;
           const alpha = (1 - (radius - 80) / 120) * 0.4;
-          
+
           ctx.strokeStyle = `rgba(236, 72, 153, ${alpha * pulse})`;
           ctx.lineWidth = 3;
           ctx.shadowBlur = 20;
@@ -759,13 +1094,13 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
       if (hasTimeDilation) {
         const time = Date.now();
         const rotation = (time / 1500) % (Math.PI * 2);
-        
+
         // Double ring effect
         ctx.strokeStyle = '#8b5cf6';
         ctx.lineWidth = 4;
         ctx.shadowBlur = 15;
         ctx.shadowColor = '#8b5cf6';
-        
+
         // Outer ring
         for (let i = 0; i < 8; i++) {
           const angle = rotation + (i * Math.PI / 4);
@@ -775,7 +1110,7 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
           ctx.arc(x, y, 6, 0, Math.PI * 2);
           ctx.fill();
         }
-        
+
         // Inner ring (counter-rotating)
         for (let i = 0; i < 6; i++) {
           const angle = -rotation + (i * Math.PI / 3);
@@ -792,13 +1127,13 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
       if (hasSupernovaBurst) {
         const time = Date.now();
         const trailLength = 12;
-        
+
         for (let i = 0; i < trailLength; i++) {
           const alpha = (1 - i / trailLength) * 0.8;
           const offset = i * 10;
           const width = vehicle.width + i * 3;
           const xOffset = (vehicle.width - width) / 2;
-          
+
           // Flame gradient
           const gradient = ctx.createLinearGradient(
             vehicle.x + vehicle.width / 2,
@@ -809,7 +1144,7 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
           gradient.addColorStop(0, `rgba(255, 107, 53, ${alpha})`);
           gradient.addColorStop(0.5, `rgba(251, 191, 36, ${alpha * 0.7})`);
           gradient.addColorStop(1, `rgba(239, 68, 68, ${alpha * 0.3})`);
-          
+
           ctx.fillStyle = gradient;
           ctx.shadowBlur = 20;
           ctx.shadowColor = '#ff6b35';
@@ -830,7 +1165,7 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
         if (hasTurboOverload) {
           ctx.globalAlpha = 0.6;
         }
-        drawVehicle(ctx, vehicle.x, vehicle.y, vehicle.width, vehicle.height, vehicle.config.color, true);
+        drawVehicle(ctx, vehicle.x, vehicle.y, vehicle.width, vehicle.height, vehicle.config.color, true, vehicle.config.type);
         ctx.globalAlpha = 1;
       }
     }

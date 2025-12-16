@@ -12,11 +12,15 @@ export interface Dimensions {
 
 export type Rectangle = Position & Dimensions;
 
+// Vehicle type for different vehicle classes
+export type VehicleType = 'sports' | 'sedan' | 'suv' | 'pickup';
+
 // Vehicle configuration
 export interface VehicleConfig {
   id: string;
   name: string;
   color: string;
+  type: VehicleType; // 车辆类型
   engineLevel: number; // 1-3, affects acceleration
   tireLevel: number; // 1-3, affects max speed and handling
 }
@@ -27,6 +31,16 @@ export interface VehicleStats {
   handling: number;
   powerUpDurationMultiplier: number; // 道具持续时间修正（引擎等级越高越短）
   handlingStability: number; // 操控稳定性（轮胎等级越高越低，增加操作难度）
+}
+
+// Vehicle special abilities based on type
+export interface VehicleAbilities {
+  baseHearts: number; // 基础耐久度
+  speedPowerUpBonus: number; // 速度类道具持续时间加成 (1.0 = 无加成)
+  weaponPowerUpBonus: number; // 武器类道具持续时间加成 (1.0 = 无加成)
+  coinBonus: number; // 金币收集加成 (1.0 = 无加成)
+  recoveryTimeMultiplier: number; // 碰撞恢复时间倍率 (1.0 = 正常)
+  description: string; // 特殊能力描述
 }
 
 export interface Vehicle extends Rectangle {

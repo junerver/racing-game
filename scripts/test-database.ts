@@ -37,6 +37,7 @@ async function testDatabase() {
             id: 'vehicle_test',
             name: '测试闪电',
             color: '#FF0000',
+            type: 'sports',
             engineLevel: 3,
             tireLevel: 2,
         };

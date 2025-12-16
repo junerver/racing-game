@@ -1,6 +1,6 @@
 // Game constants and configuration
 
-import { GameConfig, VehicleConfig, VehicleStats, PowerUpType, PowerUpConfig } from '@/types/game';
+import { GameConfig, VehicleConfig, VehicleStats, PowerUpType, PowerUpConfig, VehicleType, VehicleAbilities } from '@/types/game';
 
 // Canvas and road configuration
 export const GAME_CONFIG: GameConfig = {
@@ -109,36 +109,110 @@ export const COIN_VALUE_WEIGHTS: Record<import('@/types/game').DifficultyLevel, 
 export const selectByWeight = <T extends { weight: number }>(items: T[]): T => {
   const totalWeight = items.reduce((sum, item) => sum + item.weight, 0);
   let random = Math.random() * totalWeight;
-  
+
   for (const item of items) {
     random -= item.weight;
     if (random <= 0) {
       return item;
     }
   }
-  
+
   return items[items.length - 1]; // Fallback to last item
+};
+
+// Vehicle type abilities configuration
+export const VEHICLE_ABILITIES: Record<VehicleType, VehicleAbilities> = {
+  sports: {
+    baseHearts: 2, // 低耐久度
+    speedPowerUpBonus: 1.2, // 速度类道具+20%持续时间
+    weaponPowerUpBonus: 1.0,
+    coinBonus: 1.0,
+    recoveryTimeMultiplier: 1.0,
+    description: '🏎️ 极速先锋：速度类道具持续时间+20%，但耐久度较低',
+  },
+  sedan: {
+    baseHearts: 3, // 标准耐久度
+    speedPowerUpBonus: 1.0,
+    weaponPowerUpBonus: 1.0,
+    coinBonus: 1.15, // 金币+15%
+    recoveryTimeMultiplier: 1.0,
+    description: '🚗 财富收割：收集金币时额外获得15%金币',
+  },
+  suv: {
+    baseHearts: 3, // 标准耐久度
+    speedPowerUpBonus: 1.0,
+    weaponPowerUpBonus: 1.25, // 武器类道具+25%持续时间
+    coinBonus: 1.0,
+    recoveryTimeMultiplier: 1.0,
+    description: '🚙 火力持久：机枪等武器道具持续时间+25%',
+  },
+  pickup: {
+    baseHearts: 4, // 高耐久度
+    speedPowerUpBonus: 1.0,
+    weaponPowerUpBonus: 1.0,
+    coinBonus: 1.0,
+    recoveryTimeMultiplier: 0.8, // 恢复时间-20%
+    description: '🛻 钢铁堡垒：额外1点耐久度，碰撞恢复时间-20%',
+  },
 };
 
 // Vehicle configurations available for selection
 export const VEHICLE_PRESETS: VehicleConfig[] = [
-  { id: 'sporty', name: 'Sports Car', color: '#ef4444', engineLevel: 3, tireLevel: 2 },
-  { id: 'sedan', name: 'Sedan', color: '#3b82f6', engineLevel: 2, tireLevel: 2 },
-  { id: 'suv', name: 'SUV', color: '#22c55e', engineLevel: 2, tireLevel: 3 },
-  { id: 'truck', name: 'Pickup', color: '#f59e0b', engineLevel: 1, tireLevel: 3 },
+  { id: 'sports', name: 'Sports Car', color: '#ef4444', type: 'sports', engineLevel: 3, tireLevel: 2 },
+  { id: 'sedan', name: 'Sedan', color: '#3b82f6', type: 'sedan', engineLevel: 2, tireLevel: 2 },
+  { id: 'suv', name: 'SUV', color: '#22c55e', type: 'suv', engineLevel: 2, tireLevel: 3 },
+  { id: 'pickup', name: 'Pickup', color: '#f59e0b', type: 'pickup', engineLevel: 1, tireLevel: 3 },
 ];
 
 // Calculate vehicle stats based on configuration
 export const calculateVehicleStats = (config: VehicleConfig): VehicleStats => {
+  const abilities = VEHICLE_ABILITIES[config.type];
+
+  // 基础属性计算
+  let baseAcceleration = 0.5 + config.engineLevel * 0.3; // 0.8 - 1.4
+  let baseMaxSpeed = 8 + config.tireLevel * 2; // 10 - 14
+  const baseHandling = 3 + config.tireLevel * 1.5; // 4.5 - 7.5 pixels per frame
+
+  // 根据车辆类型调整基础属性
+  switch (config.type) {
+    case 'sports':
+      // 跑车：极速+2，加速+0.2，但操控稳定性更低
+      baseMaxSpeed += 2;
+      baseAcceleration += 0.2;
+      break;
+    case 'sedan':
+      // 轿车：均衡，无额外调整
+      break;
+    case 'suv':
+      // SUV：极速-1，但操控更稳定
+      baseMaxSpeed -= 1;
+      break;
+    case 'pickup':
+      // 皮卡：极速-2，加速-0.1，但最稳定
+      baseMaxSpeed -= 2;
+      baseAcceleration -= 0.1;
+      break;
+  }
+
   return {
-    acceleration: 0.5 + config.engineLevel * 0.3, // 0.8 - 1.4
-    maxSpeed: 8 + config.tireLevel * 2, // 10 - 14
-    handling: 3 + config.tireLevel * 1.5, // 4.5 - 7.5 pixels per frame
+    acceleration: baseAcceleration,
+    maxSpeed: baseMaxSpeed,
+    handling: baseHandling,
     // 平衡机制：引擎等级越高，道具持续时间越短 (1.0 -> 0.7)
     powerUpDurationMultiplier: 1.15 - config.engineLevel * 0.15,
     // 平衡机制：轮胎等级越高，操控稳定性越低 (1.0 -> 0.4)
-    handlingStability: 1.2 - config.tireLevel * 0.2,
+    // 跑车额外降低稳定性，皮卡额外提高稳定性
+    handlingStability: config.type === 'sports'
+      ? 1.0 - config.tireLevel * 0.2
+      : config.type === 'pickup'
+        ? 1.4 - config.tireLevel * 0.2
+        : 1.2 - config.tireLevel * 0.2,
   };
+};
+
+// Get vehicle abilities by type
+export const getVehicleAbilities = (type: VehicleType): VehicleAbilities => {
+  return VEHICLE_ABILITIES[type];
 };
 
 // Obstacle colors
