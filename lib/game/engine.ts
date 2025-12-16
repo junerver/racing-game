@@ -630,10 +630,11 @@ export class GameEngine {
       ['rotating_shield_gun', 'iron_body', 'golden_bell', 'invincible_fire_wheel'].includes(p.type)
     );
 
-    const shopTypes: ('invincibility' | 'machine_gun' | 'rocket_fuel' | 'nitro_boost')[] =
+    // Include mystery_box in the spawn pool with equal probability
+    const shopTypes: ('invincibility' | 'machine_gun' | 'rocket_fuel' | 'nitro_boost' | 'mystery_box')[] =
       hasShieldCombo
-        ? ['machine_gun', 'rocket_fuel', 'nitro_boost']
-        : ['invincibility', 'machine_gun', 'rocket_fuel', 'nitro_boost'];
+        ? ['machine_gun', 'rocket_fuel', 'nitro_boost', 'mystery_box']
+        : ['invincibility', 'machine_gun', 'rocket_fuel', 'nitro_boost', 'mystery_box'];
     const type = shopTypes[Math.floor(Math.random() * shopTypes.length)];
 
     const powerUp: PowerUp = {
@@ -800,7 +801,48 @@ export class GameEngine {
       if (powerUp.active && checkVehiclePowerUpCollision(this.state.vehicle, powerUp)) {
         powerUp.active = false;
 
-        if (powerUp.type === 'coin') {
+        if (powerUp.type === 'mystery_box') {
+          // Mystery box: randomly select one of the 4 shop power-ups
+          const hasShieldCombo = this.state.activePowerUps.some(p =>
+            ['rotating_shield_gun', 'iron_body', 'golden_bell', 'invincible_fire_wheel'].includes(p.type)
+          );
+
+          const shopPowerUps: ('invincibility' | 'machine_gun' | 'rocket_fuel' | 'nitro_boost')[] =
+            hasShieldCombo
+              ? ['machine_gun', 'rocket_fuel', 'nitro_boost']
+              : ['invincibility', 'machine_gun', 'rocket_fuel', 'nitro_boost'];
+
+          const selectedType = shopPowerUps[Math.floor(Math.random() * shopPowerUps.length)];
+
+          // Track mystery_box collection separately
+          this.trackPowerUpCollection('mystery_box', false);
+
+          // Apply the selected power-up
+          const comboType = checkComboMatch(selectedType, this.state.activePowerUps);
+          if (comboType) {
+            const activeComboPowerUp = activateComboPowerUp(comboType, performance.now());
+            this.state.activePowerUps.pop();
+            this.state.activePowerUps.push(activeComboPowerUp);
+            this.trackPowerUpCollection(comboType, true);
+          } else {
+            const config = POWERUP_CONFIG[selectedType];
+            const durationMultiplier = this.state.vehicle?.stats.powerUpDurationMultiplier ?? 1.0;
+            const existingPowerUp = this.state.activePowerUps.find((p) => p.type === selectedType);
+
+            if (existingPowerUp) {
+              existingPowerUp.remainingTime += config.duration * durationMultiplier;
+              existingPowerUp.totalDuration = existingPowerUp.remainingTime;
+            } else {
+              this.state.activePowerUps.push({
+                type: selectedType,
+                remainingTime: config.duration * durationMultiplier,
+                startTime: performance.now(),
+                totalDuration: config.duration * durationMultiplier,
+              });
+            }
+            this.trackPowerUpCollection(selectedType, false);
+          }
+        } else if (powerUp.type === 'coin') {
           const coinValue = powerUp.value || 100;
           const comboType = checkComboMatch(powerUp.type, this.state.activePowerUps);
 

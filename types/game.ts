@@ -54,6 +54,8 @@ export type PowerUpType =
   | 'machine_gun' | 'rocket_fuel' | 'nitro_boost'
   // Special shop power-ups
   | 'full_recovery'
+  // Mystery box
+  | 'mystery_box'
   // Combo power-ups
   | 'rotating_shield_gun' | 'quad_machine_gun' | 'storm_lightning' | 'double_heart' | 'double_coin'
   | 'turbo_overload' | 'iron_body' | 'golden_bell' | 'death_star_beam' | 'invincible_fire_wheel';
