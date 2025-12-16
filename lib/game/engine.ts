@@ -1068,25 +1068,39 @@ export class GameEngine {
       if (hasShieldCombo) return false;
     }
 
+    // 检查是否已有来自商店的同类型**原始道具**正在生效（防止重复购买）
+    // 注意：如果道具已被合成为高级道具（source === 'combo'），则允许再次购买
+    // 例如：护盾(道路) + 护盾(商店) = 钢铁之躯，此时可以再次购买护盾
+    const existingShopPowerUp = this.state.activePowerUps.find(
+      (p) => p.type === type && p.source === 'shop'
+    );
+    if (existingShopPowerUp) {
+      return false; // 已有商店购买的同类型原始道具，不允许再次购买
+    }
+
     if (spendCoins(config.price)) {
       this.state.coins = getCoins();
 
       const comboType = checkComboMatch(type, this.state.activePowerUps);
       if (comboType) {
         const activeComboPowerUp = activateComboPowerUp(comboType, performance.now());
+        activeComboPowerUp.source = 'combo'; // 标记来源为合成
         this.state.activePowerUps.pop();
         this.state.activePowerUps.push(activeComboPowerUp);
       } else {
         const existingPowerUp = this.state.activePowerUps.find((p) => p.type === type);
         if (existingPowerUp) {
+          // 如果已有道具（来自路上），叠加时间并更新来源为商店
           existingPowerUp.remainingTime += config.duration;
           existingPowerUp.totalDuration = existingPowerUp.remainingTime;
+          existingPowerUp.source = 'shop'; // 更新来源为商店
         } else {
           this.state.activePowerUps.push({
             type,
             remainingTime: config.duration,
             startTime: performance.now(),
             totalDuration: config.duration,
+            source: 'shop', // 标记来源为商店
           });
         }
       }

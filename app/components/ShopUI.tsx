@@ -29,9 +29,19 @@ export default function ShopUI({ gameState, onPurchase }: ShopUIProps) {
         <div className="grid grid-cols-2 gap-1">
           {shopItems.map((type) => {
             const config = POWERUP_CONFIG[type];
-            const isActive = gameState.activePowerUps.some(p => p.type === type);
+            // 检查是否已有来自商店的同类型**原始道具**正在生效
+            // 注意：如果道具已被合成为高级道具（source === 'combo'），则允许再次购买
+            const hasShopPurchased = gameState.activePowerUps.some(
+              p => p.type === type && p.source === 'shop'
+            );
+            // 检查是否有任何同类型道具正在生效（来自路上或已合成）
+            const hasRoadOrCombo = gameState.activePowerUps.some(
+              p => p.type === type && (p.source === 'road' || p.source === undefined)
+            );
             const canAfford = gameState.coins >= (config.price || 0);
             const isShieldBlocked = type === 'invincibility' && hasShieldCombo;
+            // 只有当存在来自商店的原始道具时才禁用购买
+            const isPurchaseBlocked = hasShopPurchased;
 
             return (
               <button
@@ -40,17 +50,27 @@ export default function ShopUI({ gameState, onPurchase }: ShopUIProps) {
                   e.stopPropagation();
                   onPurchase(type);
                 }}
-                disabled={isActive || !canAfford || isShieldBlocked}
+                disabled={isPurchaseBlocked || !canAfford || isShieldBlocked}
                 className={`px-2 py-1 rounded text-xs font-bold transition-all touch-manipulation ${
-                  isActive
+                  isPurchaseBlocked
                     ? 'bg-green-500 text-white cursor-not-allowed'
                     : isShieldBlocked
                     ? 'bg-red-400 text-gray-200 cursor-not-allowed'
+                    : hasRoadOrCombo
+                    ? 'bg-yellow-500 text-white hover:bg-yellow-600 active:bg-yellow-700'
                     : canAfford
                     ? 'bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700'
                     : 'bg-gray-400 text-gray-200 cursor-not-allowed'
                 }`}
-                title={isShieldBlocked ? '护盾合成道具激活中，无法购买' : config.description}
+                title={
+                  isPurchaseBlocked
+                    ? '已从商店购买，原始道具生效中'
+                    : isShieldBlocked
+                    ? '护盾合成道具激活中，无法购买'
+                    : hasRoadOrCombo
+                    ? '道具生效中（来自路上），可购买合成'
+                    : config.description
+                }
               >
                 <div className="flex items-center gap-1">
                   <span className="text-sm">{config.icon}</span>

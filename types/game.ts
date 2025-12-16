@@ -102,11 +102,15 @@ export interface PowerUp extends Rectangle {
   value?: number;
 }
 
+// 道具来源类型
+export type PowerUpSource = 'road' | 'shop' | 'boss' | 'combo' | 'mystery_box';
+
 export interface ActivePowerUp {
   type: PowerUpType;
   remainingTime: number;
   startTime: number;
   totalDuration: number;
+  source?: PowerUpSource; // 道具来源，用于限制商店重复购买
 }
 
 // Bullet for machine gun
