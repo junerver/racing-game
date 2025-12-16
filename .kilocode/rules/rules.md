@@ -4,7 +4,7 @@
 
 ## 📋 完整项目规则
 
-请参阅 [AGENTS.md](../AGENTS.md) 获取完整的项目规则、技术栈、开发规范和文件结构说明。
+请参阅 [AGENTS.md](../../AGENTS.md) 获取完整的项目规则、技术栈、开发规范和文件结构说明。
 
 ## 🚀 快速命令参考
 
@@ -43,24 +43,24 @@ npm run lint
 
 ### 游戏引擎
 
-- [`lib/game/engine.ts`](../lib/game/engine.ts) - 游戏主循环
-- [`lib/game/constants.ts`](../lib/game/constants.ts) - 游戏常量
-- [`lib/game/powerups.ts`](../lib/game/powerups.ts) - 道具系统
+- [`lib/game/engine.ts`](../../lib/game/engine.ts) - 游戏主循环
+- [`lib/game/constants.ts`](../../lib/game/constants.ts) - 游戏常量
+- [`lib/game/powerups.ts`](../../lib/game/powerups.ts) - 道具系统
 
 ### 类型定义
 
-- [`types/game.ts`](../types/game.ts) - 游戏类型
+- [`types/game.ts`](../../types/game.ts) - 游戏类型
 
 ### UI 组件
 
-- [`app/components/GameCanvas.tsx`](../app/components/GameCanvas.tsx) - 游戏画布
-- [`app/components/GameHUD.tsx`](../app/components/GameHUD.tsx) - 游戏 HUD
+- [`app/components/GameCanvas.tsx`](../../app/components/GameCanvas.tsx) - 游戏画布
+- [`app/components/GameHUD.tsx`](../../app/components/GameHUD.tsx) - 游戏 HUD
 
 ## 📝 文档更新要求
 
-- 新功能 → 更新 [`README.md`](../README.md)（玩家说明）
-- 代码修改 → 更新 [`CHANGELOG.md`](../CHANGELOG.md)（开发日志）
+- 新功能 → 更新 [`README.md`](../../README.md)（玩家说明）
+- 代码修改 → 更新 [`CHANGELOG.md`](../../CHANGELOG.md)（开发日志）
 
 ---
 
-**注意**: 本文件仅包含 Kilo Code 特定的规范。完整的项目规则、技术栈详情和开发指南请查看 [AGENTS.md](../AGENTS.md)。
+**注意**: 本文件仅包含 Kilo Code 特定的规范。完整的项目规则、技术栈详情和开发指南请查看 [AGENTS.md](../../AGENTS.md)。
