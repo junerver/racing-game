@@ -1,7 +1,7 @@
 // Simplified power-up system
 
 import { PowerUp, PowerUpType } from '@/types/game';
-import { GAME_CONFIG, POWERUP_SIZE, POWERUP_CONFIG, getLanePositions } from './constants';
+import { POWERUP_SIZE, POWERUP_CONFIG, getLanePositions } from './constants';
 
 // Create a new power-up at a random lane
 export const createPowerUp = (difficultyLevel: 'easy' | 'medium' | 'hard' = 'medium'): PowerUp => {
@@ -10,7 +10,7 @@ export const createPowerUp = (difficultyLevel: 'easy' | 'medium' | 'hard' = 'med
 
   // Select from basic power-ups that can spawn on road
   const spawnableTypes: PowerUpType[] = Object.entries(POWERUP_CONFIG)
-    .filter(([_, config]) => config.canSpawnOnRoad && config.spawnInterval === 2000)
+    .filter(([, config]) => config.canSpawnOnRoad && config.spawnInterval === 2000)
     .map(([type]) => type as PowerUpType);
 
   const types: PowerUpType[] = [...spawnableTypes, 'coin', 'coin', 'coin', 'coin', 'coin', 'coin'];

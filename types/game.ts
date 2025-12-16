@@ -10,7 +10,7 @@ export interface Dimensions {
   height: number;
 }
 
-export interface Rectangle extends Position, Dimensions { }
+export type Rectangle = Position & Dimensions;
 
 // Vehicle configuration
 export interface VehicleConfig {
@@ -209,7 +209,7 @@ export interface BossBattleState {
 }
 
 // Storage types
-export interface SavedVehicle extends VehicleConfig { }
+export type SavedVehicle = VehicleConfig;
 
 export interface PowerUpStats {
   type: PowerUpType;

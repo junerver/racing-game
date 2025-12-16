@@ -800,7 +800,7 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
         ctx.shadowBlur = 0;
       }
     }
-  }, [gameState, drawVehicle]);
+  }, [gameState, drawVehicle, drawBoss]);
 
   // Animation loop for rendering
   useEffect(() => {

@@ -25,8 +25,13 @@ export default function GamePage() {
 
     engine.initVehicle(vehicleConfig);
     engine.setOnStateChange(setGameState);
-    setGameState(engine.getState());
-    setIsInitialized(true);
+    // Use callback to get initial state to avoid calling setState synchronously in effect
+    const initialState = engine.getState();
+    // Schedule state update for next tick to avoid cascading renders
+    queueMicrotask(() => {
+      setGameState(initialState);
+      setIsInitialized(true);
+    });
 
     return () => {
       resetGameEngine();
@@ -201,15 +206,6 @@ export default function GamePage() {
     lastPauseTimeRef.current = now;
   }, []);
 
-  const handlePause = useCallback(() => {
-    const engine = getGameEngine();
-    engine.pause();
-  }, []);
-
-  const handleExit = useCallback(() => {
-    const engine = getGameEngine();
-    engine.pause();
-  }, []);
 
   if (!isInitialized || !gameState) {
     return (

@@ -1,23 +1,19 @@
 'use client';
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { getLeaderboard, saveGameData, loadGameSave } from "@/lib/utils/storage";
+import { useCallback, useState } from "react";
+import { getLeaderboard, saveGameData } from "@/lib/utils/storage";
 import { LeaderboardEntry } from "@/types/game";
 import GameStatistics from "@/app/components/GameStatistics";
 
 export default function LeaderboardPage() {
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(() => getLeaderboard());
   const [selectedEntry, setSelectedEntry] = useState<LeaderboardEntry | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
-  const loadLeaderboard = () => {
+  const loadLeaderboard = useCallback(() => {
     const data = getLeaderboard();
     setLeaderboard(data);
-  };
-
-  useEffect(() => {
-    loadLeaderboard();
   }, []);
 
   const clearOldRecords = () => {

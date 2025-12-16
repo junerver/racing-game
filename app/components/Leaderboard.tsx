@@ -1,17 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { LeaderboardEntry } from '@/types/game';
 import { getLeaderboard } from '@/lib/utils/storage';
 import GameStatisticsModal from './GameStatistics';
 
 export default function Leaderboard() {
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [leaderboard] = useState<LeaderboardEntry[]>(() => getLeaderboard());
   const [selectedEntry, setSelectedEntry] = useState<LeaderboardEntry | null>(null);
-
-  useEffect(() => {
-    setLeaderboard(getLeaderboard());
-  }, []);
 
   return (
     <>
@@ -25,15 +21,14 @@ export default function Leaderboard() {
             {leaderboard.map((entry, index) => (
               <div
                 key={entry.id}
-                className={`flex items-center justify-between p-4 rounded-lg cursor-pointer transition-all hover:scale-105 ${
-                  index === 0
+                className={`flex items-center justify-between p-4 rounded-lg cursor-pointer transition-all hover:scale-105 ${index === 0
                     ? 'bg-yellow-600 hover:bg-yellow-500'
                     : index === 1
-                    ? 'bg-gray-400 hover:bg-gray-300'
-                    : index === 2
-                    ? 'bg-orange-600 hover:bg-orange-500'
-                    : 'bg-gray-700 hover:bg-gray-600'
-                }`}
+                      ? 'bg-gray-400 hover:bg-gray-300'
+                      : index === 2
+                        ? 'bg-orange-600 hover:bg-orange-500'
+                        : 'bg-gray-700 hover:bg-gray-600'
+                  }`}
                 onClick={() => entry.statistics && setSelectedEntry(entry)}
               >
                 <div className="flex items-center gap-4">

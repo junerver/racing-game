@@ -2,17 +2,13 @@
 
 import {
   GameState,
-  GameStatus,
   Vehicle,
   Obstacle,
   ObstacleType,
   PowerUp,
   VehicleConfig,
   InputState,
-  ActivePowerUp,
   PowerUpType,
-  GameStatistics,
-  PowerUpStats,
 } from '@/types/game';
 import {
   GAME_CONFIG,
@@ -23,7 +19,6 @@ import {
   SPEED,
   getLanePositions,
   calculateVehicleStats,
-  DIFFICULTY,
   DIFFICULTY_MULTIPLIERS,
   COLLISION_RECOVERY_TIME,
   COLLISION_KNOCKBACK,
