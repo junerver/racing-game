@@ -69,6 +69,9 @@ export class GameEngine {
   private lastBulletSpawn: number = 0; // Track bullet spawn timing
   private lastDeathStarDamage: number = 0; // Track death star beam damage timing
   private gameStartTime: number = 0; // Track game start time for duration calculation
+  private magnetBonusSpawnCount: number = 0; // Track magnet bonus power-up spawns
+  private lastMagnetBonusSpawn: number = 0; // Track last magnet bonus spawn time
+  private magnetBonusTarget: number = 0; // Target number of bonus power-ups to spawn
 
   constructor() {
     this.state = this.createInitialState();
@@ -86,6 +89,9 @@ export class GameEngine {
     this.lastBulletSpawn = 0;
     this.lastDeathStarDamage = 0;
     this.gameStartTime = 0;
+    this.magnetBonusSpawnCount = 0;
+    this.lastMagnetBonusSpawn = 0;
+    this.magnetBonusTarget = 0;
   }
 
   // Helper function to safely add coins with cap
@@ -206,6 +212,9 @@ export class GameEngine {
     this.lastStormLightning = 0; // Reset storm lightning timer
     this.lastBulletSpawn = 0; // Reset bullet spawn timer
     this.lastDeathStarDamage = 0; // Reset death star damage timer
+    this.magnetBonusSpawnCount = 0; // Reset magnet bonus spawn count
+    this.lastMagnetBonusSpawn = 0; // Reset magnet bonus spawn timer
+    this.magnetBonusTarget = 0; // Reset magnet bonus target
 
     this.notifyStateChange();
     this.gameLoop();
@@ -517,6 +526,9 @@ export class GameEngine {
       this.handleStormLightning(currentTime);
     }
 
+    // Magnet bonus power-up spawning (spread over magnet duration)
+    this.handleMagnetBonusSpawning(currentTime);
+
     // Check collisions
     this.checkCollisions(currentTime);
 
@@ -659,6 +671,72 @@ export class GameEngine {
     if (hasSafeDistance) {
       this.state.powerUps.push(powerUp);
     }
+  }
+
+  // Set up magnet bonus power-up spawning (will spawn over time)
+  private spawnMagnetBonusPowerUps(count: number): void {
+    // Set target count and reset spawn counter
+    this.magnetBonusTarget = count;
+    this.magnetBonusSpawnCount = 0;
+    this.lastMagnetBonusSpawn = performance.now();
+  }
+
+  // Handle magnet bonus power-up spawning over time
+  private handleMagnetBonusSpawning(currentTime: number): void {
+    // Check if magnet or super_magnet is active and we have more to spawn
+    const magnetActive = isPowerUpActive(this.state.activePowerUps, 'magnet');
+    const superMagnetActive = isPowerUpActive(this.state.activePowerUps, 'super_magnet');
+
+    if (!magnetActive && !superMagnetActive) {
+      // Reset when magnet expires
+      this.magnetBonusSpawnCount = 0;
+      this.magnetBonusTarget = 0;
+      return;
+    }
+
+    if (this.magnetBonusSpawnCount >= this.magnetBonusTarget) {
+      return; // Already spawned all bonus power-ups
+    }
+
+    // Calculate spawn interval based on magnet duration (6000ms) and target count
+    // Spread spawns evenly over the duration
+    const spawnInterval = 6000 / this.magnetBonusTarget;
+
+    if (currentTime - this.lastMagnetBonusSpawn >= spawnInterval) {
+      this.spawnSingleMagnetBonusPowerUp();
+      this.magnetBonusSpawnCount++;
+      this.lastMagnetBonusSpawn = currentTime;
+    }
+  }
+
+  // Spawn a single magnet bonus power-up
+  private spawnSingleMagnetBonusPowerUp(): void {
+    const lanes = getLanePositions();
+
+    // Power-up types that can spawn (basic road power-ups + coins)
+    const bonusTypes: PowerUpType[] = ['coin', 'coin', 'coin', 'speed_boost', 'score_multiplier', 'magnet'];
+
+    const laneIndex = Math.floor(Math.random() * lanes.length);
+    const type = bonusTypes[Math.floor(Math.random() * bonusTypes.length)];
+
+    let value: number | undefined;
+    if (type === 'coin') {
+      const coinValues = [100, 100, 200, 200, 500];
+      value = coinValues[Math.floor(Math.random() * coinValues.length)];
+    }
+
+    const powerUp: PowerUp = {
+      x: lanes[laneIndex] - POWERUP_SIZE / 2,
+      y: -POWERUP_SIZE,
+      width: POWERUP_SIZE,
+      height: POWERUP_SIZE,
+      type,
+      duration: POWERUP_CONFIG[type].duration,
+      active: true,
+      value,
+    };
+
+    this.state.powerUps.push(powerUp);
   }
 
   // Spawn heart power-up
@@ -904,6 +982,11 @@ export class GameEngine {
             this.state.activePowerUps.pop();
             this.state.activePowerUps.push(activeComboPowerUp);
             this.trackPowerUpCollection(comboType, true);
+
+            // Super magnet: spawn 5 power-ups immediately
+            if (comboType === 'super_magnet') {
+              this.spawnMagnetBonusPowerUps(5);
+            }
           } else {
             const config = POWERUP_CONFIG[powerUp.type];
             const durationMultiplier = this.state.vehicle?.stats.powerUpDurationMultiplier ?? 1.0;
@@ -921,6 +1004,11 @@ export class GameEngine {
               });
             }
             this.trackPowerUpCollection(powerUp.type, false);
+
+            // Magnet: spawn 3 power-ups immediately to make it more fun
+            if (powerUp.type === 'magnet') {
+              this.spawnMagnetBonusPowerUps(3);
+            }
           }
         }
       }
