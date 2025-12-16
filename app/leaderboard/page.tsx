@@ -1,34 +1,41 @@
 'use client';
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
-import { getLeaderboard, saveGameData } from "@/lib/utils/storage";
+import { useCallback, useState, useEffect } from "react";
 import { LeaderboardEntry } from "@/types/game";
 import GameStatistics from "@/app/components/GameStatistics";
 
-export default function LeaderboardPage() {
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(() => getLeaderboard());
-  const [selectedEntry, setSelectedEntry] = useState<LeaderboardEntry | null>(null);
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
+interface LeaderboardEntryWithUsername extends LeaderboardEntry {
+  username: string;
+}
 
-  const loadLeaderboard = useCallback(() => {
-    const data = getLeaderboard();
-    setLeaderboard(data);
+export default function LeaderboardPage() {
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntryWithUsername[]>([]);
+  const [selectedEntry, setSelectedEntry] = useState<LeaderboardEntryWithUsername | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadLeaderboard = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/leaderboard?type=distance&limit=100');
+      if (!response.ok) {
+        throw new Error('加载排行榜失败');
+      }
+      const result = await response.json();
+      setLeaderboard(result.data.entries || []);
+      setError(null);
+    } catch (err) {
+      console.error('加载排行榜失败:', err);
+      setError(err instanceof Error ? err.message : '加载失败');
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  const clearOldRecords = () => {
-    // Only keep records with statistics
-    const newLeaderboard = leaderboard.filter(entry => entry.statistics);
-    saveGameData({ leaderboard: newLeaderboard });
+  useEffect(() => {
     loadLeaderboard();
-    setShowClearConfirm(false);
-  };
-
-  const clearAllRecords = () => {
-    saveGameData({ leaderboard: [] });
-    loadLeaderboard();
-    setShowClearConfirm(false);
-  };
+  }, [loadLeaderboard]);
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleString('zh-CN', {
@@ -45,14 +52,28 @@ export default function LeaderboardPage() {
       <main className="flex flex-col items-center gap-8 px-4 max-w-4xl w-full">
         <div className="text-center space-y-4">
           <h1 className="text-5xl font-bold text-white tracking-tight">
-            🏆 排行榜
+            🏆 全球排行榜
           </h1>
           <p className="text-lg text-gray-300">
-            Top 10 最佳成绩
+            所有玩家的最佳成绩
           </p>
         </div>
 
-        {leaderboard.length === 0 ? (
+        {isLoading ? (
+          <div className="text-center text-gray-400 mt-8">
+            <p className="text-xl mb-4">⏳ 加载中...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center text-red-400 mt-8">
+            <p className="text-xl mb-4">❌ {error}</p>
+            <button
+              onClick={() => loadLeaderboard()}
+              className="px-6 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg transition-colors"
+            >
+              重试
+            </button>
+          </div>
+        ) : leaderboard.length === 0 ? (
           <div className="text-center text-gray-400 mt-8">
             <p className="text-xl mb-4">暂无记录</p>
             <p className="text-sm">开始游戏创建你的第一条记录！</p>
@@ -71,10 +92,16 @@ export default function LeaderboardPage() {
                 <div className="text-3xl font-bold text-yellow-400 w-12 text-center">
                   #{index + 1}
                 </div>
-                <div className="flex-1 grid grid-cols-3 gap-4">
+                <div className="flex-1 grid grid-cols-4 gap-4">
                   <div>
-                    <div className="text-xs text-gray-400 mb-1">时间</div>
-                    <div className="text-sm text-white">{formatDate(entry.timestamp)}</div>
+                    <div className="text-xs text-gray-400 mb-1">玩家</div>
+                    <div
+                      className="text-lg font-bold text-cyan-400 truncate"
+                      title={entry.username}
+                    >
+                      {entry.username}
+                    </div>
+                    <div className="text-xs text-gray-400">{formatDate(entry.timestamp)}</div>
                   </div>
                   <div>
                     <div className="text-xs text-gray-400 mb-1">分数</div>
@@ -82,18 +109,25 @@ export default function LeaderboardPage() {
                     <div className="text-xs text-gray-400">{entry.distance} km</div>
                   </div>
                   <div>
+                    <div className="text-xs text-gray-400 mb-1">金币</div>
+                    <div className="text-lg font-bold text-yellow-400">💰 {entry.coins}</div>
+                  </div>
+                  <div>
                     <div className="text-xs text-gray-400 mb-1">车辆配置</div>
-                    <div className="text-sm text-white flex items-center gap-2">
+                    <div
+                      className="text-sm text-white flex items-center gap-2"
+                      title={entry.vehicleName}
+                    >
                       {entry.vehicleConfig && (
                         <span
-                          className="w-4 h-4 rounded"
+                          className="w-4 h-4 rounded flex-shrink-0"
                           style={{ backgroundColor: entry.vehicleConfig.color }}
                         />
                       )}
-                      {entry.vehicleName}
+                      <span className="truncate">{entry.vehicleName}</span>
                     </div>
                     {entry.vehicleConfig && (
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-gray-400 truncate">
                         引擎 Lv.{entry.vehicleConfig.engineLevel} | 轮胎 Lv.{entry.vehicleConfig.tireLevel}
                       </div>
                     )}
@@ -138,52 +172,6 @@ export default function LeaderboardPage() {
                   statistics={selectedEntry.statistics}
                   onClose={() => setSelectedEntry(null)}
                 />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 清除确认对话框 */}
-        {showClearConfirm && (
-          <div
-            className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
-            onClick={() => setShowClearConfirm(false)}
-          >
-            <div
-              className="bg-gray-800 rounded-lg p-6 max-w-md border-2 border-red-500"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="text-xl font-bold text-white mb-4">⚠️ 确认操作</h3>
-              <p className="text-gray-300 mb-6">
-                请选择要执行的操作：
-              </p>
-              <div className="space-y-3">
-                {leaderboard.some(e => !e.statistics) && (
-                  <button
-                    onClick={clearOldRecords}
-                    className="w-full px-4 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors text-left"
-                  >
-                    <div className="font-bold">清除旧记录</div>
-                    <div className="text-sm text-orange-200">
-                      只删除没有统计数据的旧记录（保留新记录）
-                    </div>
-                  </button>
-                )}
-                <button
-                  onClick={clearAllRecords}
-                  className="w-full px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-left"
-                >
-                  <div className="font-bold">清除所有记录</div>
-                  <div className="text-sm text-red-200">
-                    删除所有排行榜记录（不可恢复）
-                  </div>
-                </button>
-                <button
-                  onClick={() => setShowClearConfirm(false)}
-                  className="w-full px-4 py-3 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors"
-                >
-                  取消
-                </button>
               </div>
             </div>
           </div>

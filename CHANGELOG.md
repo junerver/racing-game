@@ -87,6 +87,7 @@
 修改文件：
 
 - `app/components/Leaderboard.tsx` - 重构为使用服务端 API 加载排行榜，显示玩家名称
+- `app/leaderboard/page.tsx` - 排行榜页面重构为使用服务端 API，显示玩家名称
 
 新增依赖：
 
@@ -118,11 +119,22 @@
   - 添加 `mapToEntriesWithUsername()` 方法处理带用户名的数据映射
 
 - `app/components/Leaderboard.tsx`:
+
   - 完全重构为使用服务端 API 加载排行榜
   - 添加 `useEffect` 钩子从 `/api/leaderboard` 获取数据
   - 显示玩家用户名、车辆名称和游戏时间
   - 添加加载状态和错误处理
   - 标题改为"全球排行榜"突出公共排行榜特性
+
+- `app/leaderboard/page.tsx`:
+  - 从本地存储切换到服务端 API（`/api/leaderboard`）
+  - 移除本地存储相关的清除记录功能
+  - 添加 `useEffect` 钩子异步加载排行榜数据
+  - 显示玩家用户名作为主要标识（青色加粗）
+  - 添加金币显示列
+  - 布局改为 4 列：玩家、分数、金币、车辆配置
+  - 添加加载状态、错误处理和重试按钮
+  - 标题改为"🏆 全球排行榜"和"所有玩家的最佳成绩"
 
 ### Fixed
 

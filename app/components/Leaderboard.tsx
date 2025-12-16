@@ -67,9 +67,19 @@ export default function Leaderboard() {
                   <span className="text-2xl font-bold text-white w-8">
                     {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`}
                   </span>
-                  <div>
-                    <p className="text-white font-bold text-lg">{entry.username}</p>
-                    <p className="text-cyan-400 text-sm">{entry.vehicleName}</p>
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className="text-white font-bold text-lg truncate"
+                      title={entry.username}
+                    >
+                      {entry.username}
+                    </p>
+                    <p
+                      className="text-cyan-400 text-sm truncate"
+                      title={entry.vehicleName}
+                    >
+                      {entry.vehicleName}
+                    </p>
                     <p className="text-gray-400 text-xs">
                       {new Date(entry.timestamp).toLocaleDateString()}
                     </p>
