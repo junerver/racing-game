@@ -32,6 +32,7 @@ import {
 import { calculateDifficulty, calculateGameSpeed, getObstacleCount } from './difficulty';
 import { createPowerUp, updatePowerUpPosition } from './powerups';
 import { getHighScore, getCoins, addCoins, spendCoins, addLeaderboardEntry, getSlotMachineFailureCount } from '@/lib/utils/storage';
+import { getPlayerUsername } from '@/lib/utils/player';
 import { createSlotMachineState, addCoinToSlotMachine, spinSlotMachine, calculateSlotMachineReward, completeSlotMachineSpin } from './slotmachine';
 import { checkComboMatch, activateComboPowerUp, updateActivePowerUps, isPowerUpActive } from './combo';
 import { MACHINE_GUN_COIN_REWARD, POWERUP_CONFIG } from './constants';
@@ -67,6 +68,7 @@ export class GameEngine {
   private lastStormLightning: number = 0; // Track storm lightning timing
   private lastBulletSpawn: number = 0; // Track bullet spawn timing
   private lastDeathStarDamage: number = 0; // Track death star beam damage timing
+  private gameStartTime: number = 0; // Track game start time for duration calculation
 
   constructor() {
     this.state = this.createInitialState();
@@ -83,6 +85,7 @@ export class GameEngine {
     this.lastStormLightning = 0;
     this.lastBulletSpawn = 0;
     this.lastDeathStarDamage = 0;
+    this.gameStartTime = 0;
   }
 
   // Helper function to safely add coins with cap
@@ -193,6 +196,7 @@ export class GameEngine {
     this.state.slotMachine = slotMachine;
     this.state.destroyedObstacleCount = 0;
     this.lastFrameTime = performance.now();
+    this.gameStartTime = Date.now(); // Record game start time
     this.lastObstacleSpawn = this.lastFrameTime;
     this.lastPowerUpSpawn = this.lastFrameTime;
     this.lastShopPowerUpSpawn = this.lastFrameTime;
@@ -241,7 +245,7 @@ export class GameEngine {
     // Update final statistics
     this.state.statistics.totalObstaclesDestroyed = this.state.destroyedObstacleCount;
 
-    // Save leaderboard entry with statistics
+    // Save leaderboard entry with statistics (local storage)
     if (this.state.vehicle) {
       addLeaderboardEntry({
         distance: Math.floor(this.state.distance / 1000), // Convert to km
@@ -252,9 +256,51 @@ export class GameEngine {
         vehicleConfig: this.state.vehicle.config,
         statistics: this.state.statistics,
       });
+
+      // Save to database via API (non-blocking)
+      this.saveGameRecord();
     }
 
     this.notifyStateChange();
+  }
+
+  // Save game record to database
+  private async saveGameRecord(): Promise<void> {
+    if (!this.state.vehicle) return;
+
+    try {
+      const username = getPlayerUsername();
+      // Calculate game duration from recorded start time
+      const gameDuration = Math.max(1000, Date.now() - this.gameStartTime); // At least 1 second
+
+      const response = await fetch('/api/game/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username,
+          vehicleConfig: this.state.vehicle.config,
+          distance: Math.floor(this.state.distance / 1000),
+          score: this.state.score,
+          coins: this.state.coins,
+          hearts: this.state.hearts,
+          maxSpeed: Math.floor(this.state.currentSpeed),
+          obstaclesDestroyed: this.state.destroyedObstacleCount,
+          gameDuration: Math.floor(gameDuration / 1000), // Convert to seconds
+          difficultyLevel: this.state.difficultyLevel,
+          bossDefeated: this.state.statistics.bossRecords.some(r => r.defeated),
+          statistics: this.state.statistics,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('保存游戏记录失败:', await response.text());
+      } else {
+        const result = await response.json();
+        console.log('✅ 游戏记录已保存到数据库:', result);
+      }
+    } catch (error) {
+      console.error('❌ 保存游戏记录时出错:', error);
+    }
   }
 
   // Reset game to initial state
