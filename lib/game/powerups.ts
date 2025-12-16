@@ -21,8 +21,8 @@ export const createPowerUp = (difficultyLevel: 'easy' | 'medium' | 'hard' = 'med
     const coinValues = difficultyLevel === 'hard'
       ? [100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
       : difficultyLevel === 'medium'
-      ? [100, 100, 100, 100, 100, 200, 200, 200, 200, 200]
-      : [100, 100, 100, 100, 100, 200, 200, 200, 500, 500];
+        ? [100, 100, 100, 100, 100, 200, 200, 200, 200, 200]
+        : [100, 100, 100, 100, 100, 200, 200, 200, 500, 500];
     value = coinValues[Math.floor(Math.random() * coinValues.length)];
   }
 
@@ -49,16 +49,32 @@ export const updatePowerUpPosition = (
   let newX = powerUp.x;
   let newY = powerUp.y + gameSpeed;
 
-  // Magnet effect: attract power-ups towards vehicle
+  // Magnet effect: attract power-ups towards vehicle center
   if (magnetActive && vehicleX !== undefined && vehicleY !== undefined) {
-    const dx = vehicleX - powerUp.x;
-    const dy = vehicleY - powerUp.y;
+    // Calculate distance from power-up center to vehicle center
+    const powerUpCenterX = powerUp.x + powerUp.width / 2;
+    const powerUpCenterY = powerUp.y + powerUp.height / 2;
+    const dx = vehicleX - powerUpCenterX;
+    const dy = vehicleY - powerUpCenterY;
     const distance = Math.sqrt(dx * dx + dy * dy);
 
     if (distance > 0) {
-      const attractionStrength = 0.15;
+      // Stronger attraction that increases as power-up gets closer
+      // Base strength increased from 0.15 to 0.25
+      // Additional boost when close (within 100px)
+      const baseStrength = 0.25;
+      const closeBoost = distance < 100 ? 0.15 : 0;
+      const attractionStrength = baseStrength + closeBoost;
+
+      // Apply attraction force
       newX += dx * attractionStrength;
       newY += dy * attractionStrength;
+
+      // If very close (within 30px), snap to vehicle center to ensure collision
+      if (distance < 30) {
+        newX = vehicleX - powerUp.width / 2;
+        newY = vehicleY - powerUp.height / 2;
+      }
     }
   }
 
