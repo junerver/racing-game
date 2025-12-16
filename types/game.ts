@@ -214,6 +214,7 @@ export interface BossAttack extends Rectangle {
   speed: number;
   active: boolean;
   damage: number;
+  createdAt?: number; // 创建时间戳，用于激光持续时间计算
 }
 
 export interface BossBattleState {

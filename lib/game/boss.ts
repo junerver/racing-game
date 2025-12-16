@@ -9,6 +9,9 @@ import {
 } from '@/types/game';
 import { GAME_CONFIG } from './constants';
 
+// 激光持续时间（毫秒）
+const LASER_DURATION = 800;
+
 // Boss配置
 export const BOSS_CONFIG = {
     // 每100km出现一次Boss
@@ -175,6 +178,7 @@ export const createBossAttack = (
                 speed: 0, // 激光不移动
                 active: true,
                 damage: 1,
+                createdAt: Date.now(), // 记录创建时间用于持续时间计算
             });
             break;
         }
@@ -226,10 +230,15 @@ export const updateBossAttacks = (
     attacks: BossAttack[],
     timeScale: number
 ): BossAttack[] => {
+    const now = Date.now();
     return attacks
         .map((attack) => {
             if (attack.type === 'laser') {
                 // 激光持续一段时间后消失
+                const elapsed = now - (attack.createdAt || now);
+                if (elapsed >= LASER_DURATION) {
+                    return { ...attack, active: false };
+                }
                 return attack;
             }
             return {

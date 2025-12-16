@@ -145,6 +145,15 @@
 
 ### Fixed
 
+- **修复 Boss 激光束持续时间过长问题** - 激光束现在会在 0.8 秒后正确消失
+
+  - 问题：Boss 发射的激光束没有设置持续时间，导致激光永远不会消失
+  - 解决方案：
+    - 在 `BossAttack` 类型中添加 `createdAt` 可选属性记录创建时间
+    - 在创建激光攻击时记录 `Date.now()` 时间戳
+    - 在 `updateBossAttacks()` 中检查激光存在时间，超过 800ms 后设置 `active = false`
+  - 影响文件：`lib/game/boss.ts`, `types/game.ts`
+
 - **修复车辆类型保存问题** - 确保车辆类型正确保存和加载
 
   - 修复 `saveSelectedVehicle()` 函数未保存 `type` 字段的问题
