@@ -219,7 +219,12 @@ export default function GameStatisticsModal({ statistics, onClose }: GameStatist
                                         >
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-3">
-                                                    <span className={`text-2xl ${iconColorClass}`}>{config.icon}</span>
+                                                    <span
+                                                        className={`text-2xl ${iconColorClass} inline-flex items-center justify-center`}
+                                                        style={{ width: '4rem', minWidth: '4rem' }}
+                                                    >
+                                                        {config.icon}
+                                                    </span>
                                                     <div>
                                                         <div className="text-white font-semibold">{config.name}</div>
                                                         <div className="text-xs text-gray-400">{config.description}</div>
