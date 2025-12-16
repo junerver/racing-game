@@ -127,7 +127,8 @@ export function transaction<T>(
     callback: (db: Database.Database) => T
 ): T {
     const db = getDatabase();
-    return db.transaction(callback)();
+    const wrappedCallback = () => callback(db);
+    return db.transaction(wrappedCallback)();
 }
 
 /**
@@ -165,7 +166,7 @@ export function backupDatabase(backupPath: string): void {
     const backup = new Database(backupPath);
 
     try {
-        db.backup(backup);
+        db.backup(backupPath);
         console.log(`数据库已备份到: ${backupPath}`);
     } finally {
         backup.close();
