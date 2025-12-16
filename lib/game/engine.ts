@@ -51,6 +51,15 @@ import {
   getBossNumber,
   updateBossPosition,
 } from './boss';
+// 导入道具效果系统
+import {
+  calculateSpeedModifier,
+  handleObstacleCollision,
+  executeOnUpdate,
+  executeOnExpire,
+  hasAnyInvincibility,
+  hasAnyCollisionDestroy,
+} from './powerup-effects';
 
 export class GameEngine {
   private state: GameState;
@@ -364,35 +373,28 @@ export class GameEngine {
     // This effectively locks the game to 60 FPS speed regardless of display refresh rate
     const timeScale = 1.0;
 
-    // Update speed based on distance
+    // Update speed based on distance - 使用道具效果系统计算速度
     const difficultyMultiplier = DIFFICULTY_MULTIPLIERS[this.state.difficultyLevel];
-    const rocketFuelActive = isPowerUpActive(this.state.activePowerUps, 'rocket_fuel');
-    const nitroBoostActive = isPowerUpActive(this.state.activePowerUps, 'nitro_boost');
-    const speedBoostActive = isPowerUpActive(this.state.activePowerUps, 'speed_boost');
-    const turboOverloadActive = isPowerUpActive(this.state.activePowerUps, 'turbo_overload');
-    const hyperSpeedActive = isPowerUpActive(this.state.activePowerUps, 'hyper_speed');
-    const supernovaActive = isPowerUpActive(this.state.activePowerUps, 'supernova_burst');
+    const baseSpeed = calculateGameSpeed(this.state.distance, this.state.maxSpeed);
 
     if (!this.state.isRecovering) {
-      const speedMultiplier = speedBoostActive ? 1.5 : (hyperSpeedActive ? 3 : 1);
-      let targetSpeed = calculateGameSpeed(this.state.distance, this.state.maxSpeed) * speedMultiplier * difficultyMultiplier;
+      // 使用策略模式计算速度修改
+      const speedResult = calculateSpeedModifier(
+        this.state.activePowerUps,
+        baseSpeed,
+        this.state.maxSpeed,
+        this.state
+      );
 
-      if (supernovaActive) {
-        targetSpeed = this.state.maxSpeed * 4 * difficultyMultiplier;
-      } else if (turboOverloadActive) {
-        targetSpeed = this.state.maxSpeed * 3 * difficultyMultiplier;
-      } else if (rocketFuelActive) {
-        targetSpeed = this.state.maxSpeed * 2 * difficultyMultiplier;
-      } else if (nitroBoostActive) {
-        targetSpeed = this.state.maxSpeed * difficultyMultiplier;
-      }
-
+      const targetSpeed = speedResult.finalSpeed * difficultyMultiplier;
       this.state.currentSpeed = targetSpeed;
     } else {
+      // 恢复期间的速度计算
+      const nitroBoostActive = isPowerUpActive(this.state.activePowerUps, 'nitro_boost');
       if (nitroBoostActive) {
         this.state.currentSpeed = this.state.maxSpeed * difficultyMultiplier;
       } else {
-        const targetSpeed = calculateGameSpeed(this.state.distance, this.state.maxSpeed) * difficultyMultiplier;
+        const targetSpeed = baseSpeed * difficultyMultiplier;
         this.state.currentSpeed = Math.min(
           this.state.currentSpeed + this.state.vehicle.stats.acceleration,
           targetSpeed
@@ -477,18 +479,13 @@ export class GameEngine {
     const previousPowerUps = [...this.state.activePowerUps];
     this.state.activePowerUps = updateActivePowerUps(this.state.activePowerUps, deltaTime);
 
-    // Check if golden_bell expired without collision
-    const goldenBellExpired = previousPowerUps.some(p => p.type === 'golden_bell') &&
-      !this.state.activePowerUps.some(p => p.type === 'golden_bell');
-    if (goldenBellExpired && !this.state.goldenBellCollided && this.state.goldenBellCoinValue > 0) {
-      const reward = this.state.goldenBellCoinValue * 2;
-      this.addCoinsWithCap(reward);
-      this.state.goldenBellCoinValue = 0;
-    }
-    if (goldenBellExpired) {
-      this.state.goldenBellCollided = false;
-      this.state.goldenBellShieldBroken = false;
-      this.state.goldenBellCoinValue = 0;
+    // 检查道具过期并执行过期回调
+    for (const prevPowerUp of previousPowerUps) {
+      const stillActive = this.state.activePowerUps.some(p => p.type === prevPowerUp.type);
+      if (!stillActive) {
+        // 执行道具过期回调（使用策略模式）
+        executeOnExpire(prevPowerUp.type, this.state);
+      }
     }
 
     // Trigger recovery when shop power-ups expire
@@ -516,9 +513,12 @@ export class GameEngine {
       this.spawnBullet(hasQuadMachineGun, hasRotatingShieldGun);
     }
 
-    // Death star beam - continuous beam effect
+    // 执行所有激活道具的 onUpdate 回调（使用策略模式）
+    executeOnUpdate(this.state.activePowerUps, this.state, deltaTime, currentTime);
+
+    // Death star beam - continuous beam effect (Boss 伤害逻辑保留在引擎中)
     if (hasDeathStarBeam && this.state.vehicle) {
-      this.handleDeathStarBeam(currentTime);
+      this.handleDeathStarBeamBossDamage(currentTime);
     }
 
     // Storm lightning effect - clear all obstacles every 1.5 seconds
@@ -785,94 +785,74 @@ export class GameEngine {
       .filter((powerUp) => !isOffScreen(powerUp, GAME_CONFIG.canvasHeight) && powerUp.active);
   }
 
-  // Check all collisions
+  // Check all collisions - 使用策略模式重构
   private checkCollisions(currentTime: number): void {
     if (!this.state.vehicle) return;
 
-    // Check obstacle collisions
-    const invincible = isPowerUpActive(this.state.activePowerUps, 'invincibility') ||
-      isPowerUpActive(this.state.activePowerUps, 'rotating_shield_gun') ||
-      isPowerUpActive(this.state.activePowerUps, 'turbo_overload') ||
-      isPowerUpActive(this.state.activePowerUps, 'golden_bell') ||
-      isPowerUpActive(this.state.activePowerUps, 'time_dilation');
-    const ironBody = isPowerUpActive(this.state.activePowerUps, 'iron_body');
-    const invincibleFireWheel = isPowerUpActive(this.state.activePowerUps, 'invincible_fire_wheel');
-    const supernovaActive = isPowerUpActive(this.state.activePowerUps, 'supernova_burst');
+    // 处理障碍物碰撞
+    for (let i = this.state.obstacles.length - 1; i >= 0; i--) {
+      const obstacle = this.state.obstacles[i];
 
-    // Supernova burst: destroy obstacles behind the vehicle (fire trail effect)
-    if (supernovaActive && this.state.vehicle) {
-      for (let i = this.state.obstacles.length - 1; i >= 0; i--) {
-        const obstacle = this.state.obstacles[i];
-        // Destroy obstacles that are behind the vehicle (fire trail)
-        if (obstacle.y > this.state.vehicle.y + this.state.vehicle.height) {
-          this.state.obstacles.splice(i, 1);
-          this.state.destroyedObstacleCount++;
-          this.state.statistics.totalObstaclesDestroyed = this.state.destroyedObstacleCount;
-          this.addCoinsWithCap(MACHINE_GUN_COIN_REWARD);
-          this.state.statistics.totalCoinsCollected += MACHINE_GUN_COIN_REWARD;
-        }
+      if (!checkVehicleObstacleCollision(this.state.vehicle, obstacle)) {
+        continue;
       }
-    }
 
-    if (!invincible && !ironBody && !invincibleFireWheel && !supernovaActive && !this.state.isRecovering) {
-      for (let i = 0; i < this.state.obstacles.length; i++) {
-        const obstacle = this.state.obstacles[i];
-        if (checkVehicleObstacleCollision(this.state.vehicle, obstacle)) {
-          // Collision penalty: reduce hearts, reset speed
-          this.state.hearts--;
-          this.state.currentSpeed = 0;
+      // 使用策略模式获取碰撞结果
+      const collisionResult = handleObstacleCollision(
+        this.state.activePowerUps,
+        this.state,
+        obstacle
+      );
 
-          // Set recovery time (invincibility period)
-          this.state.isRecovering = true;
-          this.state.recoveryEndTime = currentTime + COLLISION_RECOVERY_TIME;
+      // 处理碰撞结果
+      if (collisionResult.destroyObstacle) {
+        this.state.obstacles.splice(i, 1);
+        this.state.destroyedObstacleCount++;
+        this.state.statistics.totalObstaclesDestroyed = this.state.destroyedObstacleCount;
 
-          // Knockback effect: move vehicle back
-          this.state.vehicle.y = Math.min(
-            this.state.vehicle.y + COLLISION_KNOCKBACK,
-            GAME_CONFIG.canvasHeight - VEHICLE_HEIGHT - 50
-          );
-
-          // Remove the collided obstacle to prevent repeated collision
-          this.state.obstacles.splice(i, 1);
-
-          // Check if game over (hearts == 0)
-          if (this.state.hearts <= 0) {
-            this.gameOver();
-            return;
-          }
-          break;
+        if (collisionResult.coinReward > 0) {
+          this.addCoinsWithCap(collisionResult.coinReward);
+          this.state.statistics.totalCoinsCollected += collisionResult.coinReward;
         }
-      }
-    } else if ((ironBody || invincibleFireWheel) && !this.state.isRecovering) {
-      // Iron body or invincible fire wheel: destroy obstacles on collision
-      for (let i = this.state.obstacles.length - 1; i >= 0; i--) {
-        const obstacle = this.state.obstacles[i];
-        if (checkVehicleObstacleCollision(this.state.vehicle, obstacle)) {
-          this.state.obstacles.splice(i, 1);
-          this.state.destroyedObstacleCount++;
-          this.state.statistics.totalObstaclesDestroyed = this.state.destroyedObstacleCount;
-          this.state.coins += MACHINE_GUN_COIN_REWARD;
-          this.state.statistics.totalCoinsCollected += MACHINE_GUN_COIN_REWARD;
-          addCoins(MACHINE_GUN_COIN_REWARD);
 
-          // Invincible fire wheel: extend duration by 0.25s
-          if (invincibleFireWheel) {
-            const fireWheelPowerUp = this.state.activePowerUps.find(p => p.type === 'invincible_fire_wheel');
-            if (fireWheelPowerUp) {
-              fireWheelPowerUp.remainingTime += 250;
-              fireWheelPowerUp.totalDuration += 250;
-            }
+        // 处理延长持续时间（无敌风火轮）
+        if (collisionResult.extendDuration) {
+          const fireWheelPowerUp = this.state.activePowerUps.find(p => p.type === 'invincible_fire_wheel');
+          if (fireWheelPowerUp) {
+            fireWheelPowerUp.remainingTime += collisionResult.extendDuration;
+            fireWheelPowerUp.totalDuration += collisionResult.extendDuration;
           }
         }
-      }
-    } else if (isPowerUpActive(this.state.activePowerUps, 'golden_bell') && !this.state.isRecovering) {
-      // Golden bell: mark collision and break shield
-      for (const obstacle of this.state.obstacles) {
-        if (checkVehicleObstacleCollision(this.state.vehicle, obstacle)) {
-          this.state.goldenBellCollided = true;
-          this.state.goldenBellShieldBroken = true; // 破盾效果
-          break;
+      } else if (collisionResult.markCollision) {
+        // 金钟罩碰撞标记
+        this.state.goldenBellCollided = true;
+        if (collisionResult.breakShield) {
+          this.state.goldenBellShieldBroken = true;
         }
+      } else if (!collisionResult.preventDefault && !this.state.isRecovering) {
+        // 正常碰撞伤害
+        this.state.hearts--;
+        this.state.currentSpeed = 0;
+
+        // Set recovery time (invincibility period)
+        this.state.isRecovering = true;
+        this.state.recoveryEndTime = currentTime + COLLISION_RECOVERY_TIME;
+
+        // Knockback effect: move vehicle back
+        this.state.vehicle.y = Math.min(
+          this.state.vehicle.y + COLLISION_KNOCKBACK,
+          GAME_CONFIG.canvasHeight - VEHICLE_HEIGHT - 50
+        );
+
+        // Remove the collided obstacle to prevent repeated collision
+        this.state.obstacles.splice(i, 1);
+
+        // Check if game over (hearts == 0)
+        if (this.state.hearts <= 0) {
+          this.gameOver();
+          return;
+        }
+        break;
       }
     }
 
@@ -1204,22 +1184,8 @@ export class GameEngine {
     }
   }
 
-  // Death star beam handler
-  private handleDeathStarBeam(currentTime: number): void {
-    if (!this.state.vehicle) return;
-
-    // Destroy all obstacles in front of vehicle
-    for (let i = this.state.obstacles.length - 1; i >= 0; i--) {
-      const obstacle = this.state.obstacles[i];
-      if (obstacle.y < this.state.vehicle.y) {
-        this.state.obstacles.splice(i, 1);
-        this.state.destroyedObstacleCount++;
-        this.state.statistics.totalObstaclesDestroyed = this.state.destroyedObstacleCount;
-        this.addCoinsWithCap(MACHINE_GUN_COIN_REWARD);
-        this.state.statistics.totalCoinsCollected += MACHINE_GUN_COIN_REWARD;
-      }
-    }
-
+  // Death star beam boss damage handler (障碍物摧毁已移至 powerup-effects.ts)
+  private handleDeathStarBeamBossDamage(currentTime: number): void {
     // Damage boss if in boss battle - high frequency, low damage
     // Target: 25-30% of boss health over 10 seconds
     // For 1000 HP boss: 250-300 damage total
@@ -1306,15 +1272,9 @@ export class GameEngine {
       if (this.checkBossAttackVehicleCollision(attack, this.state.vehicle)) {
         attack.active = false;
 
-        // Check if player has invincibility
-        const invincible = isPowerUpActive(this.state.activePowerUps, 'invincibility') ||
-          isPowerUpActive(this.state.activePowerUps, 'rotating_shield_gun') ||
-          isPowerUpActive(this.state.activePowerUps, 'turbo_overload') ||
-          isPowerUpActive(this.state.activePowerUps, 'golden_bell') ||
-          isPowerUpActive(this.state.activePowerUps, 'iron_body') ||
-          isPowerUpActive(this.state.activePowerUps, 'invincible_fire_wheel') ||
-          isPowerUpActive(this.state.activePowerUps, 'time_dilation') ||
-          isPowerUpActive(this.state.activePowerUps, 'supernova_burst');
+        // Check if player has invincibility - 使用策略模式
+        const invincible = hasAnyInvincibility(this.state.activePowerUps) ||
+          hasAnyCollisionDestroy(this.state.activePowerUps);
 
         if (!invincible && !this.state.isRecovering) {
           this.state.hearts--;

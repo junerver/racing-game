@@ -1,29 +1,35 @@
-// Simplified power-up system
+// Power-up system with weight-based spawning
+// 道具系统 - 使用权重配置进行生成
 
-import { PowerUp, PowerUpType } from '@/types/game';
-import { POWERUP_SIZE, POWERUP_CONFIG, getLanePositions } from './constants';
+import { PowerUp, PowerUpType, DifficultyLevel } from '@/types/game';
+import {
+  POWERUP_SIZE,
+  POWERUP_CONFIG,
+  getLanePositions,
+  BASIC_POWERUP_SPAWN_WEIGHTS,
+  COIN_VALUE_WEIGHTS,
+  selectByWeight,
+} from './constants';
 
-// Create a new power-up at a random lane
-export const createPowerUp = (difficultyLevel: 'easy' | 'medium' | 'hard' = 'medium'): PowerUp => {
+/**
+ * 创建基础道具（使用权重配置）
+ * @param difficultyLevel 难度等级
+ * @returns 新创建的道具
+ */
+export const createPowerUp = (difficultyLevel: DifficultyLevel = 'medium'): PowerUp => {
   const lanes = getLanePositions();
   const laneIndex = Math.floor(Math.random() * lanes.length);
 
-  // Select from basic power-ups that can spawn on road
-  const spawnableTypes: PowerUpType[] = Object.entries(POWERUP_CONFIG)
-    .filter(([, config]) => config.canSpawnOnRoad && config.spawnInterval === 2000)
-    .map(([type]) => type as PowerUpType);
+  // 使用权重配置选择道具类型
+  const selectedWeight = selectByWeight(BASIC_POWERUP_SPAWN_WEIGHTS);
+  const type = selectedWeight.type;
 
-  const types: PowerUpType[] = [...spawnableTypes, 'coin', 'coin', 'coin', 'coin', 'coin', 'coin'];
-  const type = types[Math.floor(Math.random() * types.length)];
-
+  // 如果是金币，使用权重配置选择金币面额
   let value: number | undefined;
   if (type === 'coin') {
-    const coinValues = difficultyLevel === 'hard'
-      ? [100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
-      : difficultyLevel === 'medium'
-        ? [100, 100, 100, 100, 100, 200, 200, 200, 200, 200]
-        : [100, 100, 100, 100, 100, 200, 200, 200, 500, 500];
-    value = coinValues[Math.floor(Math.random() * coinValues.length)];
+    const coinWeights = COIN_VALUE_WEIGHTS[difficultyLevel];
+    const selectedCoin = selectByWeight(coinWeights);
+    value = selectedCoin.value;
   }
 
   return {
@@ -36,6 +42,14 @@ export const createPowerUp = (difficultyLevel: 'easy' | 'medium' | 'hard' = 'med
     active: true,
     value,
   };
+};
+
+/**
+ * 获取可生成的基础道具类型列表
+ * @returns 道具类型数组
+ */
+export const getSpawnablePowerUpTypes = (): PowerUpType[] => {
+  return BASIC_POWERUP_SPAWN_WEIGHTS.map(w => w.type);
 };
 
 // Update power-up position (move down with game speed)

@@ -64,6 +64,62 @@ export const getLanePositions = (): number[] => {
   return lanes;
 };
 
+// Power-up spawn weight configuration (higher = more likely to spawn)
+export interface PowerUpSpawnWeight {
+  type: import('@/types/game').PowerUpType;
+  weight: number;
+}
+
+// Basic power-up spawn weights (used in createPowerUp)
+export const BASIC_POWERUP_SPAWN_WEIGHTS: PowerUpSpawnWeight[] = [
+  { type: 'speed_boost', weight: 1 },
+  { type: 'invincibility', weight: 1 },
+  { type: 'magnet', weight: 1 },
+  { type: 'score_multiplier', weight: 1 },
+  { type: 'coin', weight: 6 }, // Coins are more common
+];
+
+// Shop power-up spawn weights (used in spawnShopPowerUp)
+export const SHOP_POWERUP_SPAWN_WEIGHTS: PowerUpSpawnWeight[] = [
+  { type: 'invincibility', weight: 1 },
+  { type: 'machine_gun', weight: 1 },
+  { type: 'rocket_fuel', weight: 1 },
+  { type: 'nitro_boost', weight: 1 },
+  { type: 'mystery_box', weight: 1 },
+];
+
+// Coin value weights by difficulty
+export const COIN_VALUE_WEIGHTS: Record<import('@/types/game').DifficultyLevel, { value: number; weight: number }[]> = {
+  easy: [
+    { value: 100, weight: 5 },
+    { value: 200, weight: 3 },
+    { value: 500, weight: 2 },
+  ],
+  medium: [
+    { value: 100, weight: 5 },
+    { value: 200, weight: 4 },
+    { value: 500, weight: 1 },
+  ],
+  hard: [
+    { value: 100, weight: 10 },
+  ],
+};
+
+// Helper function to select item based on weights
+export const selectByWeight = <T extends { weight: number }>(items: T[]): T => {
+  const totalWeight = items.reduce((sum, item) => sum + item.weight, 0);
+  let random = Math.random() * totalWeight;
+  
+  for (const item of items) {
+    random -= item.weight;
+    if (random <= 0) {
+      return item;
+    }
+  }
+  
+  return items[items.length - 1]; // Fallback to last item
+};
+
 // Vehicle configurations available for selection
 export const VEHICLE_PRESETS: VehicleConfig[] = [
   { id: 'sporty', name: 'Sports Car', color: '#ef4444', engineLevel: 3, tireLevel: 2 },

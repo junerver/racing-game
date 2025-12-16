@@ -4,6 +4,103 @@
 
 ### Added
 
+- **道具效果策略模式架构** - 重构道具系统以提升扩展性和可维护性
+
+  - 新增 `types/powerup-effects.ts` - 道具效果类型定义
+    - `PowerUpEffect` 接口定义道具效果的标准结构
+    - `CollisionResult` 类型定义碰撞处理结果
+    - `SpeedModifier` 类型定义速度修改器
+    - 辅助函数：`createInvincibleCollisionResult()`, `createDestroyCollisionResult()`
+  - 新增 `lib/game/powerup-effects.ts` - 道具效果处理器模块
+    - 使用策略模式实现所有道具效果
+    - 速度类道具：`speed_boost`, `hyper_speed`, `nitro_boost`, `rocket_fuel`, `turbo_overload`, `supernova_burst`
+    - 无敌类道具：`invincibility`, `time_dilation`, `rotating_shield_gun`
+    - 碰撞摧毁类道具：`iron_body`, `invincible_fire_wheel`
+    - 特殊道具：`golden_bell`, `machine_gun`, `death_star_beam`, `storm_lightning`
+    - 辅助函数：`calculateSpeedModifier()`, `handleObstacleCollision()`, `executeOnUpdate()`, `executeOnExpire()`
+    - 状态检查函数：`hasAnyInvincibility()`, `hasAnyCollisionDestroy()`
+
+- **道具生成权重配置系统** - 配置化的道具生成概率
+  - 新增 `BASIC_POWERUP_SPAWN_WEIGHTS` - 基础道具生成权重配置
+  - 新增 `SHOP_POWERUP_SPAWN_WEIGHTS` - 商店道具生成权重配置
+  - 新增 `COIN_VALUE_WEIGHTS` - 按难度等级的金币面额权重配置
+  - 新增 `selectByWeight()` - 通用权重选择辅助函数
+  - 重构 `createPowerUp()` 使用权重配置替代硬编码数组
+
+### Changed
+
+- **重构 engine.ts 速度计算逻辑** - 使用策略模式
+
+  - 移除多个 `isPowerUpActive()` 检查的 if-else 链
+  - 使用 `calculateSpeedModifier()` 统一计算速度修改
+  - 代码从 ~35 行减少到 ~15 行，提升可读性
+
+- **重构 engine.ts 碰撞处理逻辑** - 使用策略模式
+
+  - 移除分散的无敌状态检查
+  - 使用 `handleObstacleCollision()` 统一处理碰撞结果
+  - 支持碰撞结果的合并（多个道具效果叠加）
+  - 代码从 ~90 行减少到 ~70 行，逻辑更清晰
+
+- **重构道具过期处理** - 使用策略模式
+
+  - 移除硬编码的金钟罩过期逻辑
+  - 使用 `executeOnExpire()` 统一执行道具过期回调
+  - 新增道具只需在效果定义中添加 `onExpire` 回调
+
+- **重构 powerups.ts** - 使用权重配置
+  - `createPowerUp()` 使用 `selectByWeight()` 选择道具类型
+  - 金币面额使用 `COIN_VALUE_WEIGHTS` 按难度配置
+  - 新增 `getSpawnablePowerUpTypes()` 辅助函数
+
+### Technical Details
+
+新增文件：
+
+- `types/powerup-effects.ts` - 道具效果类型定义（~150 行）
+- `lib/game/powerup-effects.ts` - 道具效果处理器（~420 行）
+
+修改文件：
+
+- `lib/game/constants.ts`:
+
+  - 第 67-120 行：新增权重配置接口和常量
+  - 新增 `PowerUpSpawnWeight` 接口
+  - 新增 `BASIC_POWERUP_SPAWN_WEIGHTS`, `SHOP_POWERUP_SPAWN_WEIGHTS`, `COIN_VALUE_WEIGHTS`
+  - 新增 `selectByWeight()` 辅助函数
+
+- `lib/game/powerups.ts`:
+
+  - 第 1-50 行：重构 `createPowerUp()` 使用权重配置
+  - 新增 `getSpawnablePowerUpTypes()` 函数
+
+- `lib/game/engine.ts`:
+  - 第 54-62 行：导入道具效果系统函数
+  - 第 376-402 行：重构速度计算逻辑
+  - 第 489-497 行：重构道具过期处理
+  - 第 528-537 行：添加 `executeOnUpdate()` 调用
+  - 第 793-860 行：重构碰撞处理逻辑
+  - 第 1216-1230 行：重命名 `handleDeathStarBeam` 为 `handleDeathStarBeamBossDamage`
+
+### 架构改进
+
+**扩展性提升**：
+
+- 新增道具只需在 `POWERUP_EFFECTS` 注册表中添加效果定义
+- 无需修改 engine.ts 中的多处 if-else 逻辑
+- 道具效果与游戏引擎解耦
+
+**可维护性提升**：
+
+- 每个道具的效果逻辑集中在一处
+- 类型安全的效果定义
+- 清晰的接口契约
+
+**可测试性提升**：
+
+- 道具效果可独立单元测试
+- 辅助函数可独立验证
+
 - 新增 ❓ 神秘宝箱道具
   - 从 4 种商店道具（无敌、机枪、火箭燃料、氮气加速）中随机抽取一个生效
   - 出现率与其他商店道具一致（每 30 秒生成一次，20%概率）
