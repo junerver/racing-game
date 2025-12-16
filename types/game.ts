@@ -58,7 +58,9 @@ export type PowerUpType =
   | 'mystery_box'
   // Combo power-ups
   | 'rotating_shield_gun' | 'quad_machine_gun' | 'storm_lightning' | 'double_heart' | 'double_coin'
-  | 'turbo_overload' | 'iron_body' | 'golden_bell' | 'death_star_beam' | 'invincible_fire_wheel';
+  | 'turbo_overload' | 'iron_body' | 'golden_bell' | 'death_star_beam' | 'invincible_fire_wheel'
+  // New score_multiplier combos
+  | 'hyper_speed' | 'super_magnet' | 'time_dilation' | 'supernova_burst';
 
 export interface PowerUpConfig {
   name: string;

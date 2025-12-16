@@ -124,6 +124,12 @@ export const POWERUP_CONFIG: Record<PowerUpType, PowerUpConfig> = {
   golden_bell: { name: '金钟罩', icon: '🛡️💰', color: '#fbbf24', duration: 12000, description: '无碰撞则双倍返还金币面额', isCombo: true, comboSources: ['invincibility', 'coin'] },
   death_star_beam: { name: '死星射击', icon: '🔫⚡', color: '#8b5cf6', duration: 10000, description: '白色射线柱摧毁障碍奖励10金币', isCombo: true, comboSources: ['machine_gun', 'machine_gun'] },
   invincible_fire_wheel: { name: '无敌风火轮', icon: '🔥🛡️', color: '#ef4444', duration: 10000, description: '碰撞摧毁障碍并延长持续时间0.25秒', isCombo: true, comboSources: ['iron_body', 'invincibility'] },
+
+  // New score_multiplier combo power-ups
+  hyper_speed: { name: '极速狂飙', icon: '⚡⚡', color: '#fbbf24', duration: 10000, description: '速度提升至3倍，留下金色残影', isCombo: true, comboSources: ['score_multiplier', 'speed_boost'] },
+  super_magnet: { name: '超级磁铁', icon: '🧲🧲', color: '#ec4899', duration: 12000, description: '吸引范围翻倍，全屏吸引道具', isCombo: true, comboSources: ['score_multiplier', 'magnet'] },
+  time_dilation: { name: '时间膨胀', icon: '🛡️⏰', color: '#06b6d4', duration: 16000, description: '无敌时间翻倍，周围时间减缓', isCombo: true, comboSources: ['score_multiplier', 'invincibility'] },
+  supernova_burst: { name: '超新星爆发', icon: '🚀💥', color: '#ff4500', duration: 8000, description: '4倍速度，留下火焰轨迹摧毁障碍', isCombo: true, comboSources: ['score_multiplier', 'rocket_fuel'] },
 };
 
 // Coin value

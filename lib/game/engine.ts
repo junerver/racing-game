@@ -361,12 +361,16 @@ export class GameEngine {
     const nitroBoostActive = isPowerUpActive(this.state.activePowerUps, 'nitro_boost');
     const speedBoostActive = isPowerUpActive(this.state.activePowerUps, 'speed_boost');
     const turboOverloadActive = isPowerUpActive(this.state.activePowerUps, 'turbo_overload');
+    const hyperSpeedActive = isPowerUpActive(this.state.activePowerUps, 'hyper_speed');
+    const supernovaActive = isPowerUpActive(this.state.activePowerUps, 'supernova_burst');
 
     if (!this.state.isRecovering) {
-      const speedMultiplier = speedBoostActive ? 1.5 : 1;
+      const speedMultiplier = speedBoostActive ? 1.5 : (hyperSpeedActive ? 3 : 1);
       let targetSpeed = calculateGameSpeed(this.state.distance, this.state.maxSpeed) * speedMultiplier * difficultyMultiplier;
 
-      if (turboOverloadActive) {
+      if (supernovaActive) {
+        targetSpeed = this.state.maxSpeed * 4 * difficultyMultiplier;
+      } else if (turboOverloadActive) {
         targetSpeed = this.state.maxSpeed * 3 * difficultyMultiplier;
       } else if (rocketFuelActive) {
         targetSpeed = this.state.maxSpeed * 2 * difficultyMultiplier;
@@ -694,11 +698,12 @@ export class GameEngine {
   // Update power-up positions
   private updatePowerUps(timeScale: number): void {
     const magnetActive = this.state.activePowerUps.some(p => p.type === 'magnet');
+    const superMagnetActive = isPowerUpActive(this.state.activePowerUps, 'super_magnet');
     const vehicleX = this.state.vehicle ? this.state.vehicle.x + this.state.vehicle.width / 2 : undefined;
     const vehicleY = this.state.vehicle ? this.state.vehicle.y + this.state.vehicle.height / 2 : undefined;
 
     this.state.powerUps = this.state.powerUps
-      .map((powerUp) => updatePowerUpPosition(powerUp, this.state.currentSpeed * 0.7 * timeScale, vehicleX, vehicleY, magnetActive))
+      .map((powerUp) => updatePowerUpPosition(powerUp, this.state.currentSpeed * 0.7 * timeScale, vehicleX, vehicleY, magnetActive || superMagnetActive, superMagnetActive))
       .filter((powerUp) => !isOffScreen(powerUp, GAME_CONFIG.canvasHeight) && powerUp.active);
   }
 
@@ -710,11 +715,28 @@ export class GameEngine {
     const invincible = isPowerUpActive(this.state.activePowerUps, 'invincibility') ||
       isPowerUpActive(this.state.activePowerUps, 'rotating_shield_gun') ||
       isPowerUpActive(this.state.activePowerUps, 'turbo_overload') ||
-      isPowerUpActive(this.state.activePowerUps, 'golden_bell');
+      isPowerUpActive(this.state.activePowerUps, 'golden_bell') ||
+      isPowerUpActive(this.state.activePowerUps, 'time_dilation');
     const ironBody = isPowerUpActive(this.state.activePowerUps, 'iron_body');
     const invincibleFireWheel = isPowerUpActive(this.state.activePowerUps, 'invincible_fire_wheel');
+    const supernovaActive = isPowerUpActive(this.state.activePowerUps, 'supernova_burst');
 
-    if (!invincible && !ironBody && !invincibleFireWheel && !this.state.isRecovering) {
+    // Supernova burst: destroy obstacles behind the vehicle (fire trail effect)
+    if (supernovaActive && this.state.vehicle) {
+      for (let i = this.state.obstacles.length - 1; i >= 0; i--) {
+        const obstacle = this.state.obstacles[i];
+        // Destroy obstacles that are behind the vehicle (fire trail)
+        if (obstacle.y > this.state.vehicle.y + this.state.vehicle.height) {
+          this.state.obstacles.splice(i, 1);
+          this.state.destroyedObstacleCount++;
+          this.state.statistics.totalObstaclesDestroyed = this.state.destroyedObstacleCount;
+          this.addCoinsWithCap(MACHINE_GUN_COIN_REWARD);
+          this.state.statistics.totalCoinsCollected += MACHINE_GUN_COIN_REWARD;
+        }
+      }
+    }
+
+    if (!invincible && !ironBody && !invincibleFireWheel && !supernovaActive && !this.state.isRecovering) {
       for (let i = 0; i < this.state.obstacles.length; i++) {
         const obstacle = this.state.obstacles[i];
         if (checkVehicleObstacleCollision(this.state.vehicle, obstacle)) {
@@ -1202,7 +1224,9 @@ export class GameEngine {
           isPowerUpActive(this.state.activePowerUps, 'turbo_overload') ||
           isPowerUpActive(this.state.activePowerUps, 'golden_bell') ||
           isPowerUpActive(this.state.activePowerUps, 'iron_body') ||
-          isPowerUpActive(this.state.activePowerUps, 'invincible_fire_wheel');
+          isPowerUpActive(this.state.activePowerUps, 'invincible_fire_wheel') ||
+          isPowerUpActive(this.state.activePowerUps, 'time_dilation') ||
+          isPowerUpActive(this.state.activePowerUps, 'supernova_burst');
 
         if (!invincible && !this.state.isRecovering) {
           this.state.hearts--;

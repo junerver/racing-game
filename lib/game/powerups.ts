@@ -44,13 +44,14 @@ export const updatePowerUpPosition = (
   gameSpeed: number,
   vehicleX?: number,
   vehicleY?: number,
-  magnetActive?: boolean
+  magnetActive?: boolean,
+  superMagnetActive?: boolean
 ): PowerUp => {
   let newX = powerUp.x;
   let newY = powerUp.y + gameSpeed;
 
   // Magnet effect: attract power-ups towards vehicle center
-  if (magnetActive && vehicleX !== undefined && vehicleY !== undefined) {
+  if ((magnetActive || superMagnetActive) && vehicleX !== undefined && vehicleY !== undefined) {
     // Calculate distance from power-up center to vehicle center
     const powerUpCenterX = powerUp.x + powerUp.width / 2;
     const powerUpCenterY = powerUp.y + powerUp.height / 2;
@@ -58,20 +59,22 @@ export const updatePowerUpPosition = (
     const dy = vehicleY - powerUpCenterY;
     const distance = Math.sqrt(dx * dx + dy * dy);
 
-    if (distance > 0) {
-      // Stronger attraction that increases as power-up gets closer
-      // Base strength increased from 0.15 to 0.25
-      // Additional boost when close (within 100px)
-      const baseStrength = 0.25;
-      const closeBoost = distance < 100 ? 0.15 : 0;
-      const attractionStrength = baseStrength + closeBoost;
+    // Super magnet has full screen range (unlimited), normal magnet has 300px range
+    const inRange = superMagnetActive || distance < 300;
 
+    if (distance > 0 && inRange) {
+      // Super magnet has stronger attraction than normal magnet
+      const baseStrength = superMagnetActive ? 0.5 : 0.25;
+      const closeBoost = distance < 100 ? (superMagnetActive ? 0.3 : 0.15) : 0;
+      const attractionStrength = baseStrength + closeBoost;
+      
       // Apply attraction force
       newX += dx * attractionStrength;
       newY += dy * attractionStrength;
-
-      // If very close (within 30px), snap to vehicle center to ensure collision
-      if (distance < 30) {
+      
+      // If very close, snap to vehicle center
+      const snapDistance = superMagnetActive ? 50 : 30;
+      if (distance < snapDistance) {
         newX = vehicleX - powerUp.width / 2;
         newY = vehicleY - powerUp.height / 2;
       }

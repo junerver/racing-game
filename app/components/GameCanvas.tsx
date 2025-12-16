@@ -563,6 +563,10 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
       const hasIronBody = gameState.activePowerUps.some(p => p.type === 'iron_body');
       const hasGoldenBell = gameState.activePowerUps.some(p => p.type === 'golden_bell');
       const hasInvincibleFireWheel = gameState.activePowerUps.some(p => p.type === 'invincible_fire_wheel');
+      const hasHyperSpeed = gameState.activePowerUps.some(p => p.type === 'hyper_speed');
+      const hasSuperMagnet = gameState.activePowerUps.some(p => p.type === 'super_magnet');
+      const hasTimeDilation = gameState.activePowerUps.some(p => p.type === 'time_dilation');
+      const hasSupernovaBurst = gameState.activePowerUps.some(p => p.type === 'supernova_burst');
 
       // Draw recovery shield (collision invincibility)
       if (showRecoveryEffect) {
@@ -696,6 +700,126 @@ export default function GameCanvas({ gameState, onTouchLeft, onTouchRight, onTou
           Math.PI * 2
         );
         ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+
+      // Draw hyper speed (极速狂飙) - golden trail effect
+      if (hasHyperSpeed) {
+        const time = Date.now();
+        const trailLength = 8;
+        
+        for (let i = 0; i < trailLength; i++) {
+          const alpha = (1 - i / trailLength) * 0.6;
+          const offset = i * 8;
+          
+          ctx.globalAlpha = alpha;
+          ctx.shadowBlur = 15;
+          ctx.shadowColor = '#fbbf24';
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 3;
+          ctx.strokeRect(
+            vehicle.x - 2,
+            vehicle.y + vehicle.height + offset,
+            vehicle.width + 4,
+            2
+          );
+        }
+        ctx.globalAlpha = 1;
+        ctx.shadowBlur = 0;
+      }
+
+      // Draw super magnet (超级磁铁) - full screen attraction field
+      if (hasSuperMagnet) {
+        const time = Date.now();
+        const pulse = Math.sin(time / 150) * 0.2 + 0.8;
+        
+        // Draw expanding circles
+        for (let i = 0; i < 3; i++) {
+          const radius = 80 + i * 40 + (time / 20) % 40;
+          const alpha = (1 - (radius - 80) / 120) * 0.4;
+          
+          ctx.strokeStyle = `rgba(236, 72, 153, ${alpha * pulse})`;
+          ctx.lineWidth = 3;
+          ctx.shadowBlur = 20;
+          ctx.shadowColor = '#ec4899';
+          ctx.beginPath();
+          ctx.arc(
+            vehicle.x + vehicle.width / 2,
+            vehicle.y + vehicle.height / 2,
+            radius,
+            0,
+            Math.PI * 2
+          );
+          ctx.stroke();
+        }
+        ctx.shadowBlur = 0;
+      }
+
+      // Draw time dilation (时间膨胀) - enhanced invincibility with time distortion
+      if (hasTimeDilation) {
+        const time = Date.now();
+        const rotation = (time / 1500) % (Math.PI * 2);
+        
+        // Double ring effect
+        ctx.strokeStyle = '#8b5cf6';
+        ctx.lineWidth = 4;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#8b5cf6';
+        
+        // Outer ring
+        for (let i = 0; i < 8; i++) {
+          const angle = rotation + (i * Math.PI / 4);
+          const x = vehicle.x + vehicle.width / 2 + Math.cos(angle) * 60;
+          const y = vehicle.y + vehicle.height / 2 + Math.sin(angle) * 60;
+          ctx.beginPath();
+          ctx.arc(x, y, 6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        
+        // Inner ring (counter-rotating)
+        for (let i = 0; i < 6; i++) {
+          const angle = -rotation + (i * Math.PI / 3);
+          const x = vehicle.x + vehicle.width / 2 + Math.cos(angle) * 40;
+          const y = vehicle.y + vehicle.height / 2 + Math.sin(angle) * 40;
+          ctx.beginPath();
+          ctx.arc(x, y, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.shadowBlur = 0;
+      }
+
+      // Draw supernova burst (超新星爆发) - flame trail destroying obstacles
+      if (hasSupernovaBurst) {
+        const time = Date.now();
+        const trailLength = 12;
+        
+        for (let i = 0; i < trailLength; i++) {
+          const alpha = (1 - i / trailLength) * 0.8;
+          const offset = i * 10;
+          const width = vehicle.width + i * 3;
+          const xOffset = (vehicle.width - width) / 2;
+          
+          // Flame gradient
+          const gradient = ctx.createLinearGradient(
+            vehicle.x + vehicle.width / 2,
+            vehicle.y + vehicle.height + offset,
+            vehicle.x + vehicle.width / 2,
+            vehicle.y + vehicle.height + offset + 15
+          );
+          gradient.addColorStop(0, `rgba(255, 107, 53, ${alpha})`);
+          gradient.addColorStop(0.5, `rgba(251, 191, 36, ${alpha * 0.7})`);
+          gradient.addColorStop(1, `rgba(239, 68, 68, ${alpha * 0.3})`);
+          
+          ctx.fillStyle = gradient;
+          ctx.shadowBlur = 20;
+          ctx.shadowColor = '#ff6b35';
+          ctx.fillRect(
+            vehicle.x + xOffset,
+            vehicle.y + vehicle.height + offset,
+            width,
+            15
+          );
+        }
         ctx.shadowBlur = 0;
       }
 
