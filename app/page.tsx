@@ -1,8 +1,10 @@
 import Link from "next/link";
+import UserProfile from "./components/UserProfile";
 
 export default function Home() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-gray-900 to-gray-800">
+      <UserProfile />
       <main className="flex flex-col items-center justify-center gap-8 px-4">
         <div className="text-center space-y-4">
           <h1 className="text-6xl font-bold text-white tracking-tight">
